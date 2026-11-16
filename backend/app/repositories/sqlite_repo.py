@@ -282,6 +282,7 @@ class SQLiteRepository:
         doc_id: str,
         status: DocumentStatus,
         *,
+        language: str | None = None,
         page_count: int | None = None,
         chunk_count: int | None = None,
         error_message: str | None = None,
@@ -291,6 +292,8 @@ class SQLiteRepository:
             if row is None:
                 raise DocumentNotFoundError(doc_id)
             row.status = status.value
+            if language is not None:
+                row.language = language
             if page_count is not None:
                 row.page_count = page_count
             if chunk_count is not None:
