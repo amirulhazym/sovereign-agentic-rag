@@ -17,9 +17,9 @@ Authoritative engineering guide for AI coding agents working in this repository.
 
 1. **Zero Import-Time Side Effects:** Never instantiate ML models, Ollama/DeepSeek clients, or Qdrant/SQLite connections at Python module import time. Wire resources inside FastAPI `lifespan` and inject via `Depends()`.
 2. **Strict Package Decoupling (`eval/` vs. `backend/`):** `eval/` communicates with `backend/` exclusively via `RAGTargetAdapter` over HTTP (or recorded JSONL outputs). Keep verifier weights inside `eval/` so they never enter `backend/` RAM.
-3. **16GB RAM Protection (`LOCAL_ONPREM`):** Use FastEmbed (`ONNX`) rather than PyTorch `sentence-transformers` inside `backend/`. Default local Ollama model to `qwen3:4b` (configurable to `qwen3:8b`).
+3. **16GB RAM Protection (`LOCAL_ONPREM`):** Use FastEmbed (`ONNX`) rather than PyTorch `sentence-transformers` inside `backend/`. Configure quantized `Qwen3.8` series GGUF models / free OpenAI-compatible local sources via `LOCAL_LLM_MODEL` (supporting low-bit Dynamic v3.1 quants on 16GB workstations and larger quants on 24GB+ GPUs).
 4. **Fast Control Nodes & Cache-Friendly Generation:**
-   - Append `/no_think` (Qwen3) and enforce `temperature=0.0` + JSON mode on `QueryRouter`, `QueryRewriter`, and `RelevanceGrader`.
+   - Disable reasoning overhead (`/no_think` / `think=false` for `Qwen3.8`) and enforce `temperature=0.0` + JSON mode on `QueryRouter`, `QueryRewriter`, and `RelevanceGrader`.
    - Order `GroundedGenerator` messages strictly static-to-dynamic (Static System Prompt + Rules $\ge 1,024$ tokens $\rightarrow$ Collection Descriptor $\rightarrow$ Prior History $\rightarrow$ Sorted `ParentChunk` blocks $\rightarrow$ Current Question) for DeepSeek Prefix Context Caching.
 5. **Bounded Agent Loop & Sovereignty:** Cap LangGraph retries strictly at `max_retries=2`. When retries exhaust with no relevant evidence, emit deterministic `GracefulRefusal` (`citations: []`). Keep all retrieval strictly inside the active `collection_id`; never call external web search.
 6. **Non-Blocking Ingestion & Streaming:** Run CPU-bound PDF parsing (`PyMuPDF4LLM`) and embedding inside `asyncio.to_thread()` via FastAPI `BackgroundTasks`. Check `await request.is_disconnected()` inside SSE generators.

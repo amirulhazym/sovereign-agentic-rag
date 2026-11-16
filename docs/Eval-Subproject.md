@@ -28,7 +28,7 @@ eval/datasets/golden_dataset.jsonl
       ┌────────▼──────┐  ┌────▼─────────────┐
       │   LLMJudge    │  │     JEVJudge     │
       │ (DeepSeek /   │  │ (Local NLI /     │
-      │  Qwen3 JSON)  │  │  Cross-Encoder)  │
+      │ Qwen3.8 JSON) │  │  Cross-Encoder)  │
       └────────┬──────┘  └────┬─────────────┘
                └──────┬───────┘
                       ▼
@@ -114,7 +114,7 @@ class BaseJudgeEvaluator(ABC):
 ## 3. Judge Implementations
 
 ### 3.1 Judge 1: `LLMJudgeEvaluator` (`LLM-as-a-Judge`)
-- **Backends:** OpenAI-compatible client targeting DeepSeek (`deepseek-chat`, `temperature=0.0`, `response_format={"type": "json_object"}`) or local Ollama (`qwen3:4b` / `qwen3:8b` with `/no_think`).
+- **Backends:** OpenAI-compatible client targeting DeepSeek (`deepseek-chat`, `temperature=0.0`, `response_format={"type": "json_object"}`) or local Ollama / HF GGUF (`Qwen3.8` quantized via `LOCAL_LLM_MODEL` with `/no_think`).
 - **Prompt Structure:** Static system grading rubric ($\ge 1,024$ tokens for DeepSeek prefix caching) followed by dynamic `(question, ground_truth_answer, retrieved_contexts, answer)` payload.
 - **Metrics Scored:**
   1. **Faithfulness:** Fraction of factual claims in `output.answer` strictly supported by `output.retrieved_contexts`.

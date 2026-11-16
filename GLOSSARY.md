@@ -29,7 +29,7 @@ The canonical inline citation token `[doc_id:pX]` (e.g., `[hr_policy_my:p4]`) em
 
 ### `InferenceMode`
 The runtime sovereignty toggle (`LOCAL_ONPREM` vs. `CLOUD_API`) selecting which `LLMProvider` and `EmbeddingProvider` adapters handle a request:
-- `LOCAL_ONPREM`: 100% air-gapped self-hosted execution via Ollama (`qwen3:4b` default / `qwen3:8b`) + FastEmbed (`BAAI/bge-m3` / `Qdrant/bm25`) + ONNX Cross-Encoder.
+- `LOCAL_ONPREM`: 100% air-gapped self-hosted execution via Ollama / llama.cpp (`Qwen3.8` quantized GGUF series via Hugging Face/Unsloth or free OpenAI-compatible local models, configurable via `LOCAL_LLM_MODEL`) + FastEmbed (`BAAI/bge-m3` / `Qdrant/bm25`) + ONNX Cross-Encoder.
 - `CLOUD_API`: Cost-optimized DeepSeek API (`deepseek-chat` / `deepseek-reasoner`) arranged for **Prefix Context Caching**.
 
 ### `GracefulRefusal`
@@ -42,7 +42,7 @@ A single bilingual benchmark test case in `eval/datasets/golden_dataset.jsonl` c
 The uniform output contract returned by every `BaseJudgeEvaluator` implementation for an `EvalSample`, containing normalized `[0.0, 1.0]` scores (`faithfulness`, `answer_relevancy`, `context_recall`), a binary threshold decision (`PASS` | `FAIL`), and benchmark telemetry (`latency_ms`, `input_tokens`, `output_tokens`, `estimated_cost_usd`).
 
 ### `LLMJudge` (`LLM-as-a-Judge`)
-A generative evaluator implementation (`LLMJudgeEvaluator`) using DeepSeek or Qwen3 with structured JSON output to grade `EvalSample` outputs across Faithfulness, Answer Relevancy, and Context Recall.
+A generative evaluator implementation (`LLMJudgeEvaluator`) using DeepSeek or `Qwen3.8` with structured JSON output to grade `EvalSample` outputs across Faithfulness, Answer Relevancy, and Context Recall.
 
 ### `JEVJudge` (`JEV-as-a-Judge`)
 A non-generative discriminative decision/verifier evaluator (`JEVJudgeEvaluator`) using a local multilingual Cross-Encoder / Natural Language Inference (NLI) model to classify groundedness and relevance deterministically (`0.0` stochastic variance, `$0.00` API cost, sub-100ms latency).

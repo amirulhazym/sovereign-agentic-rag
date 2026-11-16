@@ -12,7 +12,7 @@
   - **Collection A (`it_infra_sops`):** Enterprise IT & Server Infrastructure SOPs (hardware specs, NVMe/RAID runbooks, deployment SOPs).
   - **Collection B (`malaysian_enterprise_policy`):** Malaysian Enterprise Policy & Compliance (English, Bahasa Melayu, and BM-EN workplace code-switching).
 - **Dual-Mode Inference Adapter (`LOCAL_ONPREM` $\leftrightarrow$ `CLOUD_API`):**
-  - `LOCAL_ONPREM`: 100% air-gapped execution on 16GB RAM workstations using **Ollama (`qwen3:4b` / `qwen3:8b`)**, **FastEmbed ONNX (`BAAI/bge-m3` + `Qdrant/bm25`)**, and an ONNX Cross-Encoder reranker.
+  - `LOCAL_ONPREM`: 100% air-gapped execution on 16GB RAM workstations using **Ollama / llama.cpp (`Qwen3.8` series** quantized GGUFs — e.g., Hugging Face / Unsloth `hf.co/unsloth/Qwen3.8-27B-GGUF` low-bit Dynamic v3.1 quants, `Qwen3.8-Flash-Next-GGUF`, or smaller quantized `qwen3.8` models / free OpenAI-compatible sources via `LOCAL_LLM_MODEL`), **FastEmbed ONNX (`BAAI/bge-m3` + `Qdrant/bm25`)**, and an ONNX Cross-Encoder reranker.
   - `CLOUD_API`: **DeepSeek API** ordered strictly static-to-dynamic ($\ge 1,024$-token static prefix) to maximize **Prefix Context Caching** hit discounts.
 - **Sub-10ms Qdrant Hybrid Search + Structure-Aware Ingestion:** Native Dense + Sparse BM25 vectors fused server-side via **Reciprocal Rank Fusion (RRF)**, fed by **`PyMuPDF4LLM`** and two-tier **`ParentChunk` / `ChildChunk` + `Breadcrumb`** chunking via non-blocking FastAPI `BackgroundTasks`.
 - **Bounded LangGraph State Machine (`max_retries=2`):** 6 observable nodes (`QueryRouter` $\rightarrow$ `QueryRewriter` $\rightarrow$ `HybridRetriever` $\rightarrow$ `CrossEncoderReranker` $\rightarrow$ `RelevanceGrader` $\rightarrow$ `GroundedGenerator`) with `CitationValidator` (`[doc_id:pX]`) and deterministic bilingual `GracefulRefusal` (no external web search leakage).
@@ -31,22 +31,67 @@ This repository evolves the 2025 prototype [`amirulhazym/malay-qa-bot-rag`](http
 | **Retrieval & Chunking** | Local FAISS + `MiniLM-L12-v2` + 300-char recursive split | Cloud Pinecone (pure dense cosine) + 1,000-char split (`Context Precision` plateaued at `0.336`) | **Qdrant Hybrid Search (Dense + Sparse BM25 via RRF)** + **`PyMuPDF4LLM` `ParentChunk`/`ChildChunk` + `Breadcrumb`** + `collection_id` isolation |
 | **Backend & Transport** | Monolithic Streamlit script | Single-file FastAPI `main.py` (import-time model load, blocking `POST`, duplicated `v2_adapter.py`) | **Layered FastAPI** (`routers -> services -> agents -> repositories/providers`), `lifespan` + `Depends()`, async `BackgroundTasks`, **typed SSE** |
 | **Frontend UI** | Streamlit | Streamlit polling `requests.post(..., timeout=30)` | **Next.js (App Router, TypeScript, Tailwind)** with live **Agent Execution Stepper**, mode switch, & clickable `[doc_id:pX]` citation cards |
-| **Sovereignty & Cost** | Broken local `flan-t5-small` (`0.037` relevancy) | Cloud lock-in (Pinecone + Gemini) | **`$0` Infra Dual-Mode Adapter:** `LOCAL_ONPREM` (Ollama `qwen3` + FastEmbed ONNX) $\leftrightarrow$ `CLOUD_API` (DeepSeek Prefix Caching) |
+| **Sovereignty & Cost** | Broken local `flan-t5-small` (`0.037` relevancy) | Cloud lock-in (Pinecone + Gemini) | **`$0` Infra Dual-Mode Adapter:** `LOCAL_ONPREM` (`Qwen3.8` quantized GGUF + FastEmbed ONNX) $\leftrightarrow$ `CLOUD_API` (DeepSeek Prefix Caching) |
 | **Containerization** | Hugging Face Spaces SDK | Single container launching 2 processes via `sleep 20` | **Multi-stage Docker Compose** (`frontend`, `backend`, `qdrant`, `ollama` profile) with `service_healthy` probes & named volumes |
 | **Evaluation** | Manual / Qualitative | Jupyter Notebook (`03-Evaluation-Framework.ipynb`) with RAGAs (`IndexError` / `NaN` failures) | **Standalone `eval/` CLI Harness** comparing **`LLM-as-a-Judge`** vs. **`JEV-as-a-Judge`** (Latency, Cost, Variance, Cohen's Kappa) |
 
 ---
 
-## System Architecture
+## End-to-End Agentic RAG Architecture (Query-to-Response & Async Ingestion)
+
+### 1. End-to-End Agentic Query-to-Response Pipeline (`POST /api/v1/chat/stream`)
+
+```mermaid
+flowchart TD
+    User(["1. User Query (EN / BM / BM-EN)<br/>+ collection_id + InferenceMode"]) -->|"POST /api/v1/chat/stream"| Router["2. QueryRouter (/no_think JSON)<br/>Detect Language & Classify Intent"]
+
+    Router -->|"route == direct"| Gen
+    Router -->|"single_collection / multi_doc_compare"| Rewriter["3. QueryRewriter (/no_think JSON)<br/>Bilingual BM<->EN & Acronym Expansion"]
+
+    Rewriter --> Retriever["4. HybridRetriever<br/>FastEmbed Dense (bge-m3) + Sparse (bm25)"]
+    Retriever --> Qdrant[("Qdrant Server-Side RRF<br/>Filter: collection_id")]
+    Qdrant -->|"Matched ChildChunk parent_ids"| SQLiteHydrate[("SQLite ParentChunk Hydration<br/>Full Sections, Tables & Page Numbers")]
+    SQLiteHydrate --> Reranker["5. CrossEncoderReranker<br/>ONNX bge-reranker-v2-m3 (Top 5)"]
+    Reranker --> Grader{"6. RelevanceGrader (/no_think)<br/>Self-Reflective Evidence Check"}
+
+    Grader -->|"Fail & retry_count < 2<br/>(Agentic Self-Correction Loop)"| Rewriter
+    Grader -->|"Fail & retry_count == 2"| Refusal["Deterministic GracefulRefusal<br/>(Bilingual Refusal, citations: [])"]
+    Grader -->|"Pass: Grounded Evidence Found"| Gen["7. GroundedGenerator<br/>Static-to-Dynamic Prompt (>=1,024 tok prefix)"]
+
+    Gen -->|"LOCAL_ONPREM"| LocalLLM["Ollama / HF GGUF (Qwen3.8 Quantized)"]
+    Gen -->|"CLOUD_API"| CloudLLM["DeepSeek API (Prefix Cache Hit)"]
+    LocalLLM --> Validator["8. CitationValidator<br/>Normalize [doc_id:pX] & Strip Phantoms"]
+    CloudLLM --> Validator
+
+    Validator --> SSE["9. Typed SSE Stream to Next.js UI<br/>node_status | token | citations | done | error"]
+    Refusal --> SSE
+    SSE --> UI(["Next.js Workspace<br/>Live Agent Stepper + Streaming Answer + Clickable Citation Cards"])
+```
+
+### 2. Async Document Ingestion Pipeline (`POST /api/v1/collections/{id}/documents`)
 
 ```mermaid
 flowchart LR
-    UI["Next.js Workspace UI<br/>(App Router + TypeScript)"] <-->|"REST + Typed SSE<br/>(POST /api/v1/chat/stream)"| API["FastAPI Layered Backend<br/>(routers -> services -> agents)"]
-    API --> Qdrant[("Qdrant<br/>Dense + Sparse RRF")]
-    API --> SQLite[("SQLite (aiosqlite)<br/>Parents, Docs, History")]
-    API -->|"LOCAL_ONPREM"| Local["Ollama (Qwen3) + FastEmbed ONNX"]
-    API -->|"CLOUD_API"| Cloud["DeepSeek API (Prefix Caching)"]
-    Eval["Standalone eval/ CLI<br/>(LLMJudge vs JEVJudge)"] -->|"RAGTargetAdapter (HTTP)"| API
+    Upload(["Upload .pdf / .md / .txt"]) --> Hash["SHA-256 Content Hash<br/>Deduplicate in SQLite"]
+    Hash -->|"Duplicate"| Existing["HTTP 200 (Idempotent Return)"]
+    Hash -->|"New File"| Queue["SQLite: PENDING + HTTP 202<br/>FastAPI BackgroundTasks (asyncio.to_thread)"]
+    Queue --> Parse["PyMuPDF4LLM<br/>Preserve Headings, Tables & Page Numbers"]
+    Parse --> Split["Two-Tier Hierarchical Chunker"]
+    Split -->|"1,200-1,500 tok"| SQLiteP[("SQLite parent_chunks<br/>Full Section Context")]
+    Split -->|"300-400 tok + Breadcrumb"| Embed["FastEmbed ONNX<br/>Dense (bge-m3) + Sparse (bm25)"]
+    Embed --> QdrantC[("Qdrant ChildChunks<br/>Payload: collection_id, parent_id, page")]
+    SQLiteP --> Ready["Status: READY (UI Polls Status)"]
+    QdrantC --> Ready
+```
+
+### 3. Decoupled Evaluation Loop (`eval/`)
+
+```mermaid
+flowchart LR
+    Dataset[("golden_dataset.jsonl<br/>36 EN/BM/Mixed + Refusal Traps")] --> Adapter["RAGTargetAdapter (HTTP SSE)"]
+    Adapter --> API["FastAPI /api/v1/chat/stream"]
+    API --> Evaluators["BaseJudgeEvaluator Seam<br/>LLMJudge (DeepSeek/Qwen3.8) vs JEVJudge (Local NLI)"]
+    Evaluators --> Report["Side-by-Side Benchmark Report<br/>Latency | Cost ($) | Variance | Cohen's Kappa"]
 ```
 
 ---

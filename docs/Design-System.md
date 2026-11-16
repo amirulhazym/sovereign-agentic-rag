@@ -61,7 +61,7 @@
 
 ### 3.1 `InferenceModeSwitch` (Sovereignty Toggle)
 - Two-segment pill control in the Top Header Bar:
-  - **`LOCAL_ONPREM`** (Emerald shield icon): Displays active local stack subtitle (`Ollama qwen3:4b + FastEmbed bge-m3`).
+  - **`LOCAL_ONPREM`** (Emerald shield icon): Displays active local stack subtitle (`Ollama Qwen3.8 Quantized + FastEmbed bge-m3`).
   - **`CLOUD_API`** (Indigo cloud-bolt icon): Displays DeepSeek cache status (`DeepSeek Chat · Prefix Caching On`).
 - Switching modes sets the active request parameter sent to `POST /api/v1/chat/stream` without losing the current conversation or active `Collection`.
 
