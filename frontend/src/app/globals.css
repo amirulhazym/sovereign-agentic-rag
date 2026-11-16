@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-canvas: #090D16;
+  --bg-surface: #111827;
+  --bg-elevated: #1E293B;
+  --border-subtle: #273244;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent-sovereign: #10B981;
+  --accent-cloud: #6366F1;
+  --accent-warning: #F59E0B;
+  --accent-danger: #F43F5E;
+  --citation-pill-bg: #0F292E;
+  --citation-pill-border: #14B8A6;
+}
+
+html,
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+.citation-pill {
+  background-color: var(--citation-pill-bg);
+  border: 1px solid var(--citation-pill-border);
+  color: #5EEAD4;
+}
+
+/* Custom crisp scrollbars for multi-pane dark slate workbench */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
