@@ -32,11 +32,11 @@
 **Interfaces:**
 - Produces: `Settings` (Pydantic `BaseSettings`), `AppError` hierarchy, `create_app() -> FastAPI`.
 
-- [ ] **Step 1:** Write failing tests verifying `/health` returns `200`, unknown routes/domain errors return uniform `{"error": {"code", "message", "detail", "request_id"}}` JSON envelopes, and importing `app.main` performs zero model downloads.
-- [ ] **Step 2:** Run `pytest tests/test_health_and_errors.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `config.py`, `exceptions.py`, `errors.py`, and `create_app()` factory with FastAPI `lifespan`.
-- [ ] **Step 4:** Re-run `pytest tests/test_health_and_errors.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(backend): scaffold FastAPI app factory, config, and error envelopes`.
+- [x] **Step 1:** Write failing tests verifying `/health` returns `200`, unknown routes/domain errors return uniform `{"error": {"code", "message", "detail", "request_id"}}` JSON envelopes, and importing `app.main` performs zero model downloads.
+- [x] **Step 2:** Run `pytest tests/test_health_and_errors.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `config.py`, `exceptions.py`, `errors.py`, and `create_app()` factory with FastAPI `lifespan`.
+- [x] **Step 4:** Re-run `pytest tests/test_health_and_errors.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(backend): scaffold FastAPI app factory, config, and error envelopes`.
 
 ### Task 2: Async SQLite Repository (`collections`, `documents`, `parent_chunks`, `chat_history`)
 **Files:**
@@ -47,11 +47,11 @@
 - Consumes: `Settings.sqlite_url`
 - Produces: `SQLiteRepository` async CRUD for collections, SHA-256 deduplicated documents (`PENDING|INDEXING|READY|FAILED`), `ParentChunk` batch storage/hydration, and chat history.
 
-- [ ] **Step 1:** Write failing tests against an in-memory/temp SQLite DB testing collection creation, `(collection_id, content_hash)` duplicate check, status transitions, and `ParentChunk` hydration preserving order.
-- [ ] **Step 2:** Run `pytest tests/test_sqlite_repo.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `SQLiteRepository` with `aiosqlite` / SQLAlchemy 2.0 async engine + schema initialization.
-- [ ] **Step 4:** Re-run `pytest tests/test_sqlite_repo.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(backend): add async SQLite repository for collections, documents, parents, and chat`.
+- [x] **Step 1:** Write failing tests against an in-memory/temp SQLite DB testing collection creation, `(collection_id, content_hash)` duplicate check, status transitions, and `ParentChunk` hydration preserving order.
+- [x] **Step 2:** Run `pytest tests/test_sqlite_repo.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `SQLiteRepository` with `aiosqlite` / SQLAlchemy 2.0 async engine + schema initialization.
+- [x] **Step 4:** Re-run `pytest tests/test_sqlite_repo.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(backend): add async SQLite repository for collections, documents, parents, and chat`.
 
 ### Task 3: Qdrant Hybrid Search Repository (`Dense + Sparse BM25 + RRF`) & InMemory Fake
 **Files:**
@@ -61,11 +61,11 @@
 **Interfaces:**
 - Produces: `VectorRepository` Protocol, `QdrantHybridRepository`, `InMemoryVectorRepository` (used by downstream unit tests).
 
-- [ ] **Step 1:** Write failing tests verifying `collection_id` payload isolation, combined Dense + Sparse RRF scoring behavior, and document deletion by `doc_id` using `InMemoryVectorRepository` + unit mocks validating `QdrantClient` `Prefetch` + `Fusion.RRF` payload filters.
-- [ ] **Step 2:** Run `pytest tests/test_qdrant_repo.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `VectorRepository`, `InMemoryVectorRepository`, and `QdrantHybridRepository`.
-- [ ] **Step 4:** Re-run `pytest tests/test_qdrant_repo.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(backend): add Qdrant hybrid RRF repository seam and in-memory fake`.
+- [x] **Step 1:** Write failing tests verifying `collection_id` payload isolation, combined Dense + Sparse RRF scoring behavior, and document deletion by `doc_id` using `InMemoryVectorRepository` + unit mocks validating `QdrantClient` `Prefetch` + `Fusion.RRF` payload filters.
+- [x] **Step 2:** Run `pytest tests/test_qdrant_repo.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `VectorRepository`, `InMemoryVectorRepository`, and `QdrantHybridRepository`.
+- [x] **Step 4:** Re-run `pytest tests/test_qdrant_repo.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(backend): add Qdrant hybrid RRF repository seam and in-memory fake`.
 
 ### Task 4: Dual-Mode `LLMProvider` Seam (`LOCAL_ONPREM` Ollama & `CLOUD_API` DeepSeek)
 **Files:**
@@ -75,11 +75,11 @@
 **Interfaces:**
 - Produces: `LLMProvider` Protocol (`generate_structured`, `stream_answer`), `LocalOnPremLLMAdapter`, `CloudDeepSeekLLMAdapter`, `build_grounded_messages()` (static-to-dynamic prefix layout $\ge 1,024$ tokens).
 
-- [ ] **Step 1:** Write failing tests asserting: (a) `build_grounded_messages()` puts static system prompt ($\ge 1,024$ tokens) before sorted `ParentChunk` blocks and query; (b) control-node requests attach `/no_think` for Ollama and `temperature=0.0` JSON mode for DeepSeek; (c) streaming adapter yields token deltas and extracts `cache_hit_tokens`.
-- [ ] **Step 2:** Run `pytest tests/test_llm_providers.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement provider interfaces, prompt prefix builder, and mocked-HTTP-tested Ollama/DeepSeek adapters.
-- [ ] **Step 4:** Re-run `pytest tests/test_llm_providers.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(backend): implement dual-mode LLMProvider seam with DeepSeek prefix caching`.
+- [x] **Step 1:** Write failing tests asserting: (a) `build_grounded_messages()` puts static system prompt ($\ge 1,024$ tokens) before sorted `ParentChunk` blocks and query; (b) control-node requests attach `/no_think` for Ollama and `temperature=0.0` JSON mode for DeepSeek; (c) streaming adapter yields token deltas and extracts `cache_hit_tokens`.
+- [x] **Step 2:** Run `pytest tests/test_llm_providers.py -v` -> confirm RED.
+- [x] **Step 3:** Implement provider interfaces, prompt prefix builder, and mocked-HTTP-tested Ollama/DeepSeek adapters.
+- [x] **Step 4:** Re-run `pytest tests/test_llm_providers.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(backend): implement dual-mode LLMProvider seam with DeepSeek prefix caching`.
 
 ### Task 5: Lightweight `EmbeddingProvider` & `RerankerProvider` (FastEmbed ONNX)
 **Files:**
@@ -89,11 +89,11 @@
 **Interfaces:**
 - Produces: `EmbeddingProvider` Protocol, `FastEmbedProvider` (ONNX `BAAI/bge-m3` + `Qdrant/bm25`), `ONNXRerankerProvider`, and lightweight test fakes.
 
-- [ ] **Step 1:** Write failing tests for dense/sparse vector shapes, rerank ordering, and lazy loading behavior (never loading models at module import).
-- [ ] **Step 2:** Run `pytest tests/test_embeddings_and_reranker.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `FastEmbedProvider` and `ONNXRerankerProvider` wrapped safely for 16GB RAM execution.
-- [ ] **Step 4:** Re-run `pytest tests/test_embeddings_and_reranker.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(backend): add FastEmbed ONNX embeddings and reranker providers`.
+- [x] **Step 1:** Write failing tests for dense/sparse vector shapes, rerank ordering, and lazy loading behavior (never loading models at module import).
+- [x] **Step 2:** Run `pytest tests/test_embeddings_and_reranker.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `FastEmbedProvider` and `ONNXRerankerProvider` wrapped safely for 16GB RAM execution.
+- [x] **Step 4:** Re-run `pytest tests/test_embeddings_and_reranker.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(backend): add FastEmbed ONNX embeddings and reranker providers`.
 
 ---
 
@@ -107,11 +107,11 @@
 **Interfaces:**
 - Produces: `extract_pages(file_bytes, doc_type) -> list[ExtractedPage]`, `build_parent_child_chunks(pages, doc_id, filename) -> tuple[list[ParentChunk], list[ChildChunk]]`.
 
-- [ ] **Step 1:** Write failing tests verifying Markdown heading/table preservation, `.pdf`/`.md`/`.txt` parsing, `ParentChunk` (~1,200–1,500 tokens) vs. `ChildChunk` (~300–400 tokens, 50 overlap), and `Breadcrumb` formatting `[filename | Page X > Section]`.
-- [ ] **Step 2:** Run `pytest tests/test_chunking.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `PyMuPDF4LLM` extractor and `HierarchicalChunker`.
-- [ ] **Step 4:** Re-run `pytest tests/test_chunking.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(ingestion): add PyMuPDF4LLM extraction and parent-child breadcrumb chunker`.
+- [x] **Step 1:** Write failing tests verifying Markdown heading/table preservation, `.pdf`/`.md`/`.txt` parsing, `ParentChunk` (~1,200–1,500 tokens) vs. `ChildChunk` (~300–400 tokens, 50 overlap), and `Breadcrumb` formatting `[filename | Page X > Section]`.
+- [x] **Step 2:** Run `pytest tests/test_chunking.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `PyMuPDF4LLM` extractor and `HierarchicalChunker`.
+- [x] **Step 4:** Re-run `pytest tests/test_chunking.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(ingestion): add PyMuPDF4LLM extraction and parent-child breadcrumb chunker`.
 
 ### Task 7: `DocumentIngestionService` (SHA-256 Deduplication & Async Lifecycle) + REST Routers
 **Files:**
@@ -122,11 +122,11 @@
 - Consumes: `SQLiteRepository`, `VectorRepository`, `EmbeddingProvider`, `chunking.py`
 - Produces: `POST /api/v1/collections`, `GET /api/v1/collections`, `POST /api/v1/collections/{id}/documents` (`202` or `200` duplicate), `GET /api/v1/documents/{doc_id}/status`.
 
-- [ ] **Step 1:** Write failing API contract tests for collection CRUD, `202 Accepted` async upload, `PENDING -> INDEXING -> READY` transition via `asyncio.to_thread`, `FAILED` error capture, and `200 OK` SHA-256 deduplication on repeat upload.
-- [ ] **Step 2:** Run `pytest tests/test_ingestion_api.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `DocumentIngestionService`, dependency wiring, and routers.
-- [ ] **Step 4:** Re-run `pytest tests/test_ingestion_api.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(ingestion): add async background ingestion service and collection/document APIs`.
+- [x] **Step 1:** Write failing API contract tests for collection CRUD, `202 Accepted` async upload, `PENDING -> INDEXING -> READY` transition via `asyncio.to_thread`, `FAILED` error capture, and `200 OK` SHA-256 deduplication on repeat upload.
+- [x] **Step 2:** Run `pytest tests/test_ingestion_api.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `DocumentIngestionService`, dependency wiring, and routers.
+- [x] **Step 4:** Re-run `pytest tests/test_ingestion_api.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(ingestion): add async background ingestion service and collection/document APIs`.
 
 ### Task 8: Pre-Curated Seed Collections (`it_infra_sops` & `malaysian_enterprise_policy`) + Seeder
 **Files:**
@@ -136,11 +136,11 @@
 **Interfaces:**
 - Produces: `seed_demo_collections()` and `POST /api/v1/collections/seed`.
 
-- [ ] **Step 1:** Author rich, realistic bilingual seed documents (Collection A: server hardware spec tables, NVMe/RAID SOPs, deployment runbooks; Collection B: English, Bahasa Melayu, and BM-EN code-switching Malaysian HR/PDPA compliance policies) and write failing idempotent seeding test.
-- [ ] **Step 2:** Run `pytest tests/test_seeder.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `SeederService` and `/api/v1/collections/seed` endpoint.
-- [ ] **Step 4:** Re-run `pytest tests/test_seeder.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(data): add pre-seeded bilingual demo collections and idempotent seeder`.
+- [x] **Step 1:** Author rich, realistic bilingual seed documents (Collection A: server hardware spec tables, NVMe/RAID SOPs, deployment runbooks; Collection B: English, Bahasa Melayu, and BM-EN code-switching Malaysian HR/PDPA compliance policies) and write failing idempotent seeding test.
+- [x] **Step 2:** Run `pytest tests/test_seeder.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `SeederService` and `/api/v1/collections/seed` endpoint.
+- [x] **Step 4:** Re-run `pytest tests/test_seeder.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(data): add pre-seeded bilingual demo collections and idempotent seeder`.
 
 ---
 
@@ -154,11 +154,11 @@
 **Interfaces:**
 - Produces: `validate_and_normalize_citations(text, allowed_parents) -> tuple[str, list[CitationItem]]`, `build_graceful_refusal(language) -> str`.
 
-- [ ] **Step 1:** Write failing tests verifying bracket variant normalization (`[hr_pol, page 4]` -> `[hr_pol:p4]`), phantom citation stripping, and `ms` vs. `en` refusal messages.
-- [ ] **Step 2:** Run `pytest tests/test_citation_validator.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement regex `CitationValidator` and bilingual refusal templates.
-- [ ] **Step 4:** Re-run `pytest tests/test_citation_validator.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(agents): add CitationValidator and bilingual GracefulRefusal`.
+- [x] **Step 1:** Write failing tests verifying bracket variant normalization (`[hr_pol, page 4]` -> `[hr_pol:p4]`), phantom citation stripping, and `ms` vs. `en` refusal messages.
+- [x] **Step 2:** Run `pytest tests/test_citation_validator.py -v` -> confirm RED.
+- [x] **Step 3:** Implement regex `CitationValidator` and bilingual refusal templates.
+- [x] **Step 4:** Re-run `pytest tests/test_citation_validator.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(agents): add CitationValidator and bilingual GracefulRefusal`.
 
 ### Task 10: LangGraph State, 6 Nodes & Bounded Retry Graph (`max_retries=2`)
 **Files:**
@@ -169,11 +169,11 @@
 - Consumes: `LLMProvider`, `EmbeddingProvider`, `RerankerProvider`, `VectorRepository`, `SQLiteRepository`
 - Produces: `AgenticRAGWorkflow` compiling the 6-node `StateGraph` (`QueryRouter -> QueryRewriter -> HybridRetriever -> CrossEncoderReranker -> RelevanceGrader -> GroundedGenerator | GracefulRefusal`).
 
-- [ ] **Step 1:** Write failing tests covering: (a) direct route bypass; (b) retry loop when `RelevanceGrader` rejects once then approves on attempt 2; (c) strict loop cap at `max_retries=2` triggering `GracefulRefusal`; (d) `/no_think` on control nodes.
-- [ ] **Step 2:** Run `pytest tests/test_langgraph_workflow.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `RAGGraphState`, node classes, conditional edges, and `compile_rag_graph()`.
-- [ ] **Step 4:** Re-run `pytest tests/test_langgraph_workflow.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(agents): implement 6-node bounded LangGraph state machine`.
+- [x] **Step 1:** Write failing tests covering: (a) direct route bypass; (b) retry loop when `RelevanceGrader` rejects once then approves on attempt 2; (c) strict loop cap at `max_retries=2` triggering `GracefulRefusal`; (d) `/no_think` on control nodes.
+- [x] **Step 2:** Run `pytest tests/test_langgraph_workflow.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `RAGGraphState`, node classes, conditional edges, and `compile_rag_graph()`.
+- [x] **Step 4:** Re-run `pytest tests/test_langgraph_workflow.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(agents): implement 6-node bounded LangGraph state machine`.
 
 ### Task 11: FastAPI SSE Chat Endpoint (`POST /api/v1/chat/stream`) & Readiness Probe
 **Files:**
@@ -183,11 +183,11 @@
 **Interfaces:**
 - Produces: `POST /api/v1/chat/stream` emitting `node_status`, `token`, `citations`, `done`, `error` with anti-buffering headers and `request.is_disconnected()` abort handling, plus `GET /ready`.
 
-- [ ] **Step 1:** Write failing SSE contract tests checking event ordering (`node_status` -> `token` -> `citations` -> `done`), mid-stream `error` event on provider exception, anti-buffering headers, client disconnect termination, and SQLite chat history persistence.
-- [ ] **Step 2:** Run `pytest tests/test_chat_sse_contract.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `ChatService`, SSE serializer, disconnect check, and `/ready` probe.
-- [ ] **Step 4:** Re-run `pytest tests/test_chat_sse_contract.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(api): add typed SSE streaming endpoint and readiness probes`.
+- [x] **Step 1:** Write failing SSE contract tests checking event ordering (`node_status` -> `token` -> `citations` -> `done`), mid-stream `error` event on provider exception, anti-buffering headers, client disconnect termination, and SQLite chat history persistence.
+- [x] **Step 2:** Run `pytest tests/test_chat_sse_contract.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `ChatService`, SSE serializer, disconnect check, and `/ready` probe.
+- [x] **Step 4:** Re-run `pytest tests/test_chat_sse_contract.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(api): add typed SSE streaming endpoint and readiness probes`.
 
 ---
 
@@ -199,13 +199,13 @@
 - Test: `eval/tests/test_target_adapter_and_dataset.py`
 
 **Interfaces:**
-- Produces: `EvalSample`, `RAGOutput`, `JudgeVerdict`, `RAGTargetAdapter`, `HTTPTargetAdapter` (parses SSE stream).
+- Produces: `EvalSample`, `RAGOutput`, `JudgeVerdict`, `RAGTargetAdapter`, `HTTPTargetAdapter` (parses SSE stream), `RecordedTraceTargetAdapter`.
 
-- [ ] **Step 1:** Author 36 curated bilingual samples in `golden_dataset.jsonl` (including `unanswerable_refusal` traps) and write failing tests validating JSONL schema parsing and SSE response parsing in `HTTPTargetAdapter`.
-- [ ] **Step 2:** Run `pytest eval/tests/test_target_adapter_and_dataset.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement schemas and `HTTPTargetAdapter` using `httpx.AsyncClient`.
-- [ ] **Step 4:** Re-run `pytest` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(eval): add standalone eval schemas, HTTP SSE adapter, and 36-sample golden dataset`.
+- [x] **Step 1:** Author 36 curated bilingual samples in `golden_dataset.jsonl` (including `unanswerable_refusal` traps) and write failing tests validating JSONL schema parsing and SSE response parsing in `HTTPTargetAdapter`.
+- [x] **Step 2:** Run `pytest eval/tests/test_target_adapter_and_dataset.py -v` -> confirm RED.
+- [x] **Step 3:** Implement schemas, `HTTPTargetAdapter`, and `RecordedTraceTargetAdapter` using `httpx.AsyncClient`.
+- [x] **Step 4:** Re-run `pytest` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(eval): add standalone eval schemas, HTTP SSE adapter, and 36-sample golden dataset`.
 
 ### Task 13: `BaseJudgeEvaluator`, `LLMJudgeEvaluator` & `JEVJudgeEvaluator`
 **Files:**
@@ -215,25 +215,25 @@
 **Interfaces:**
 - Produces: `BaseJudgeEvaluator.evaluate(sample, output) -> JudgeVerdict` implemented by `LLMJudgeEvaluator` and `JEVJudgeEvaluator`.
 
-- [ ] **Step 1:** Write failing tests verifying: (a) both judges return identical `JudgeVerdict` contract bounds `[0.0, 1.0]`; (b) `LLMJudgeEvaluator` calculates token cost and handles trap refusals; (c) `JEVJudgeEvaluator` runs deterministically (`StdDev == 0.0` across repeated calls, `$0.00` cost) using sentence entailment scoring.
-- [ ] **Step 2:** Run `pytest eval/tests/test_judges.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `BaseJudgeEvaluator`, `LLMJudgeEvaluator`, and `JEVJudgeEvaluator`.
-- [ ] **Step 4:** Re-run `pytest eval/tests/test_judges.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(eval): implement LLMJudgeEvaluator and deterministic JEVJudgeEvaluator`.
+- [x] **Step 1:** Write failing tests verifying: (a) both judges return identical `JudgeVerdict` contract bounds `[0.0, 1.0]`; (b) `LLMJudgeEvaluator` calculates token cost and handles trap refusals; (c) `JEVJudgeEvaluator` runs deterministically (`StdDev == 0.0` across repeated calls, `$0.00` cost) using sentence entailment scoring.
+- [x] **Step 2:** Run `pytest eval/tests/test_judges.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `BaseJudgeEvaluator`, `LLMJudgeEvaluator`, and `JEVJudgeEvaluator`.
+- [x] **Step 4:** Re-run `pytest eval/tests/test_judges.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(eval): implement LLMJudgeEvaluator and deterministic JEVJudgeEvaluator`.
 
 ### Task 14: Benchmark Statistics (`Variance`, `Cohen's Kappa`) & CLI Report Runner
 **Files:**
-- Create: `eval/eval_harness/metrics.py`, `eval/eval_harness/runner.py`, `eval/reports/.gitkeep`
+- Create: `eval/eval_harness/metrics.py`, `eval/eval_harness/runner.py`, `eval/reports/.gitkeep`, `eval/README.md`
 - Test: `eval/tests/test_benchmark_metrics.py`
 
 **Interfaces:**
 - Produces: `compute_benchmark_summary()`, CLI `python -m eval_harness.runner --runs 3` outputting `benchmark_report.md` and `.json`.
 
-- [ ] **Step 1:** Write failing unit tests for latency percentiles (`p50`, `p95`), multi-run score variance (`StdDev`), raw agreement %, and Cohen's Kappa ($\kappa$) edge cases (including full agreement and chance-level agreement).
-- [ ] **Step 2:** Run `pytest eval/tests/test_benchmark_metrics.py -v` -> confirm RED.
-- [ ] **Step 3:** Implement `metrics.py` and async CLI `runner.py`.
-- [ ] **Step 4:** Re-run `pytest eval/tests/test_benchmark_metrics.py -v` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(eval): add multi-run variance, Cohen's Kappa, and comparison report runner`.
+- [x] **Step 1:** Write failing unit tests for latency percentiles (`p50`, `p95`), multi-run score variance (`StdDev`), raw agreement %, and Cohen's Kappa ($\kappa$) edge cases (including full agreement and chance-level agreement).
+- [x] **Step 2:** Run `pytest eval/tests/test_benchmark_metrics.py -v` -> confirm RED.
+- [x] **Step 3:** Implement `metrics.py` and async CLI `runner.py`.
+- [x] **Step 4:** Re-run `pytest eval/tests/test_benchmark_metrics.py -v` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(eval): add multi-run variance, Cohen's Kappa, and comparison report runner`.
 
 ---
 

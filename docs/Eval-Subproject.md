@@ -123,7 +123,7 @@ class BaseJudgeEvaluator(ABC):
 - **Telemetry:** Extracts exact `prompt_tokens`, `completion_tokens`, and `prompt_cache_hit_tokens` from API usage metadata to compute `estimated_cost_usd`.
 
 ### 3.2 Judge 2: `JEVJudgeEvaluator` (`JEV-as-a-Judge`)
-- **Model Slot:** Local non-generative discriminative verifier (default configurable multilingual NLI Cross-Encoder such as `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` or multilingual Cross-Encoder `BAAI/bge-reranker-v2-m3` running via ONNX/CPU). Supports English, Bahasa Melayu, and BM-EN code-switching natively without generative JSON fragility.
+- **Model Slot:** Local non-generative discriminative verifier via lazy-loaded `onnxruntime` + `tokenizers` (`ONNXMultilingualNLIBackend`, default `Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`, also supporting 1-logit ONNX Cross-Encoders such as `BAAI/bge-reranker-v2-m3`, plus a `LexicalDiscriminativeBackend` option for zero-download smoke runs). Supports English, Bahasa Melayu, and BM-EN code-switching natively without generative JSON fragility or PyTorch RAM overhead.
 - **Deterministic Metric Algorithm (Zero Token Generation):**
   1. **Faithfulness (Sentence-Level Entailment):** Split `output.answer` (stripping `[doc_id:pX]` citation tags) into atomic sentences $S = [s_1, \dots, s_m]$. For each sentence $s_i$, compute NLI probability $P(\text{entailment} \mid \text{premise}=\text{contexts}, \text{hypothesis}=s_i)$ normalized over $\{\text{entailment}, \text{contradiction}\}$ (or max across individual context chunks). Average across all claims.
   2. **Answer Relevancy (Discriminative Query-Answer Scoring):** Score $(sample.question, output.answer)$ through the multilingual relevance cross-encoder / NLI pair and normalize via logistic sigmoid into $[0.0, 1.0]$.
@@ -140,7 +140,7 @@ The curated golden dataset contains **36 bilingual samples** covering:
 
 ### Sample JSONL Line
 ```json
-{"id":"pol_mix_001","collection":"malaysian_enterprise_policy","language":"mixed","query_type":"acronym_clause","question":"Apa prosedur tuntutan OT kalau kerja public holiday?","ground_truth_answer":"Pekerja layak menuntut bayaran 2x atau cuti gantian tertakluk kepada kelulusan pengurus dalam tempoh 7 hari bekerja.","expected_citations":[{"doc_id":"hr_policy_my","page":12}],"ground_truth_contexts":["Klausa 4.2: Kerja pada hari kelepasan am layak menerima bayaran 2x ganda atau cuti gantian dengan kelulusan pengurus dalam masa 7 hari."]}
+{"id":"pol_mix_001","collection":"malaysian_enterprise_policy","language":"mixed","query_type":"acronym_clause","question":"Apa prosedur tuntutan OT kalau non-executive staf kerja pada public holiday?","ground_truth_answer":"Pekerja bukan eksekutif yang bertugas pada hari kelepasan am layak menuntut bayaran 2.0x gaji sejam atau cuti gantian tertakluk kepada kelulusan bertulis pengurus bahagian dalam tempoh 7 hari bekerja melalui portal HRIS.","expected_citations":[{"doc_id":"hr_employment_and_overtime_policy_my","page":2}],"ground_truth_contexts":["Kerja Pada Hari Kelepasan Am (Public Holiday): Pekerja kategori bukan eksekutif yang diarahkan bertugas pada hari kelepasan am layak menuntut sama ada bayaran pada kadar 2.0x gaji sejam atau memilih cuti gantian (replacement leave), tertakluk kepada kelulusan bertulis pengurus bahagian dalam tempoh 7 hari bekerja melalui portal HRIS."]}
 ```
 
 ---
