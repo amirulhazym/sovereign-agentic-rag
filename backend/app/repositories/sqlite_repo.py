@@ -388,6 +388,17 @@ class SQLiteRepository:
             await session.refresh(row)
         return self._to_chat_message_read(row)
 
+    async def list_collection_sessions(self, collection_id: str) -> list[ChatSessionRead]:
+        await self.get_collection(collection_id)
+        async with self._session_factory() as session:
+            stmt = (
+                select(ChatSessionORM)
+                .where(ChatSessionORM.collection_id == collection_id)
+                .order_by(ChatSessionORM.created_at.desc())
+            )
+            rows = (await session.execute(stmt)).scalars().all()
+        return [ChatSessionRead.model_validate(row) for row in rows]
+
     async def list_session_messages(self, session_id: str) -> list[ChatMessageRead]:
         async with self._session_factory() as session:
             stmt = (

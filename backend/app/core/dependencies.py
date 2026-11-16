@@ -3,9 +3,11 @@
 from fastapi import Request
 
 from app.core.config import Settings
-from app.providers.embeddings import EmbeddingProvider
+from app.providers.base import LLMProvider
+from app.providers.embeddings import EmbeddingProvider, RerankerProvider
 from app.repositories.qdrant_repo import VectorRepository
 from app.repositories.sqlite_repo import SQLiteRepository
+from app.services.chat_service import ChatService
 from app.services.ingestion import DocumentIngestionService
 from app.services.seeder import SeederService
 
@@ -30,6 +32,16 @@ def get_embedding_provider(request: Request) -> EmbeddingProvider:
     return request.app.state.embedding_provider
 
 
+def get_reranker_provider(request: Request) -> RerankerProvider:
+    """Return RerankerProvider implementation (ONNX Cross-Encoder or test fake)."""
+    return request.app.state.reranker_provider
+
+
+def get_llm_providers(request: Request) -> dict[str, LLMProvider]:
+    """Return dual-mode LLMProvider map (`LOCAL_ONPREM` & `CLOUD_API`)."""
+    return request.app.state.llm_providers
+
+
 def get_ingestion_service(request: Request) -> DocumentIngestionService:
     """Return DocumentIngestionService from app.state."""
     return request.app.state.ingestion_service
@@ -38,3 +50,8 @@ def get_ingestion_service(request: Request) -> DocumentIngestionService:
 def get_seeder_service(request: Request) -> SeederService:
     """Return SeederService from app.state."""
     return request.app.state.seeder_service
+
+
+def get_chat_service(request: Request) -> ChatService:
+    """Return ChatService from app.state."""
+    return request.app.state.chat_service
