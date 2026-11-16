@@ -2,7 +2,7 @@
 
 **A zero-infrastructure-cost (`$0`), containerized, bilingual (EN / BM / BM-EN Code-Switching) Agentic RAG platform built for air-gapped on-premises sovereignty and cache-optimized cloud inference.**
 
-> **Project Status:** **Phases 1–5 Complete** — Architecture & TDD specs (`docs/`), FastAPI layered backend Core + Qdrant Hybrid RRF + `PyMuPDF4LLM` ingestion + Seed Collections + Bounded 6-node LangGraph SSE engine (`backend/`, `38 passed`), and Standalone `LLMJudge` vs. `JEVJudge` evaluation harness (`eval/`, `14 passed`) are implemented and verified. Next: Phase 6 (Next.js Workspace UI) & Phase 7 (Docker Compose).
+> **Project Status:** **Phases 1–6 Complete** — Architecture & TDD specs (`docs/`), FastAPI layered backend Core + Qdrant Hybrid RRF + `PyMuPDF4LLM` ingestion + Seed Collections + Bounded 6-node LangGraph SSE engine (`backend/`, `38 passed`), Standalone `LLMJudge` vs. `JEVJudge` evaluation harness (`eval/`, `14 passed`), and Glass-Box Next.js Workspace UI (`frontend/`, Vitest `9 passed`, strict `tsc`, ESLint clean) are implemented. Final Phase 7 (`Docker Compose` multi-stage build verification & portfolio handoff) is next.
 
 ---
 
@@ -114,13 +114,14 @@ flowchart TD
 - **[Design System (`docs/Design-System.md`)](docs/Design-System.md)** — UI tokens, 3-pane Glass-Box workspace layout, Agent Execution Stepper, and Evidence Inspector specs.
 - **[Evaluation Sub-Project (`docs/Eval-Subproject.md`)](docs/Eval-Subproject.md)** — `BaseJudgeEvaluator` seam, `LLMJudge` vs. `JEVJudge` scoring algorithms, `golden_dataset.jsonl`, and Cohen's Kappa reporting.
 - **[Standalone Evaluation Harness Guide (`eval/README.md`)](eval/README.md)** — Setup and CLI benchmark commands (`--runs 3`, `HTTPTargetAdapter`, ONNX NLI / DeepSeek / Ollama).
+- **[Next.js Frontend Workspace Guide (`frontend/README.md`)](frontend/README.md)** — 3-pane Glass-Box workspace components, typed `ReadableStream` SSE client, and Vitest/build commands.
 - **[Domain & Architecture Glossary (`GLOSSARY.md`)](GLOSSARY.md)** — Canonical project vocabulary.
 - **[TDD Implementation Plan (`docs/superpowers/plans/2026-11-16-sovereign-agentic-rag.md`)](docs/superpowers/plans/2026-11-16-sovereign-agentic-rag.md)** — Task-by-task build roadmap (Phases 2–7).
 - **[Agent Engineering Rules (`AGENTS.md`)](AGENTS.md)** — Architectural invariants, TDD discipline, and verification commands.
 
 ---
 
-## Verified Local Suites (Phases 2–5)
+## Verified Local Suites (Phases 2–6)
 
 ```bash
 # Backend unit, ingestion, LangGraph & SSE contract tests
@@ -128,6 +129,9 @@ cd backend && .venv/Scripts/pytest.exe tests -v && .venv/Scripts/ruff.exe check 
 
 # Standalone eval harness tests & lint
 cd eval && .venv/Scripts/pytest.exe tests -v && .venv/Scripts/ruff.exe check eval_harness tests
+
+# Next.js workspace tests, strict TypeScript & ESLint (run `npm run build` inside Docker/NTFS/ext4)
+cd frontend && npm test && npm run typecheck && npm run lint
 ```
 
 ---

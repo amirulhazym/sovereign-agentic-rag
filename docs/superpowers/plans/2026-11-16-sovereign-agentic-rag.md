@@ -241,31 +241,31 @@
 
 ### Task 15: Next.js Scaffold, Design Tokens & Typed SSE Client (`fetch` + `ReadableStream`)
 **Files:**
-- Create: `frontend/package.json`, `frontend/tsconfig.json`, `frontend/src/types/api.ts`, `frontend/src/lib/sse-client.ts`, `frontend/src/app/layout.tsx`, `frontend/src/app/globals.css`
+- Create: `frontend/package.json`, `frontend/tsconfig.json`, `frontend/src/types/api.ts`, `frontend/src/lib/sse-client.ts`, `frontend/src/lib/api-client.ts`, `frontend/src/app/layout.tsx`, `frontend/src/app/globals.css`
 - Test: `frontend/src/lib/__tests__/sse-client.test.ts`
 
 **Interfaces:**
 - Produces: `streamChatEvents(payload, onEvent, signal)` supporting chunked SSE boundaries across arbitrary byte splits and `AbortController`.
 
-- [ ] **Step 1:** Write failing Vitest unit tests passing split/chunked SSE frames (`event: node_status`, `event: token`, `event: citations`, `event: done`, `event: error`) across `ReadableStream` boundaries and testing abort cancellation.
-- [ ] **Step 2:** Run `npm test` -> confirm RED.
-- [ ] **Step 3:** Scaffold Next.js App Router + Tailwind tokens from `docs/Design-System.md` and implement `sse-client.ts`.
-- [ ] **Step 4:** Run `npm test && npm run typecheck` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(frontend): scaffold Next.js workspace and typed SSE ReadableStream client`.
+- [x] **Step 1:** Write failing Vitest unit tests passing split/chunked SSE frames (`event: node_status`, `event: token`, `event: citations`, `event: done`, `event: error`) across `ReadableStream` boundaries and testing abort cancellation.
+- [x] **Step 2:** Run `npm test` -> confirm RED.
+- [x] **Step 3:** Scaffold Next.js App Router + Tailwind tokens from `docs/Design-System.md` and implement `sse-client.ts`.
+- [x] **Step 4:** Run `npm test && npm run typecheck` -> confirm GREEN.
+- [x] **Step 5:** Commit `feat(frontend): scaffold Next.js workspace and typed SSE ReadableStream client`.
 
 ### Task 16: 3-Pane Workspace UI (`CollectionSidebar`, `ModeSwitch`, `AgentStepper`, `CitationInspector`)
 **Files:**
-- Create: `frontend/src/components/CollectionSidebar.tsx`, `frontend/src/components/DocumentUploader.tsx`, `frontend/src/components/InferenceModeSwitch.tsx`, `frontend/src/components/AgentExecutionStepper.tsx`, `frontend/src/components/ChatWorkspace.tsx`, `frontend/src/components/EvidenceInspectorDrawer.tsx`, `frontend/src/app/page.tsx`
+- Create: `frontend/src/components/CollectionSidebar.tsx`, `frontend/src/components/DocumentUploader.tsx`, `frontend/src/components/InferenceModeSwitch.tsx`, `frontend/src/components/AgentExecutionStepper.tsx`, `frontend/src/components/ChatWorkspace.tsx`, `frontend/src/components/EvidenceInspectorDrawer.tsx`, `frontend/src/components/SovereignWorkspace.tsx`, `frontend/src/app/page.tsx`, `frontend/README.md`
 - Test: `frontend/src/components/__tests__/workspace.test.tsx`
 
 **Interfaces:**
 - Consumes: `sse-client.ts`, backend `/api/v1/*` endpoints.
 
-- [ ] **Step 1:** Write failing React Testing Library tests covering `InferenceModeSwitch` toggling `LOCAL_ONPREM` <-> `CLOUD_API`, `AgentExecutionStepper` rendering retry attempts, clickable `[doc_id:pX]` citation pills opening `EvidenceInspectorDrawer`, and document upload status polling (`PENDING -> READY`).
-- [ ] **Step 2:** Run `npm test` -> confirm RED.
-- [ ] **Step 3:** Implement all workspace components per `docs/Design-System.md`.
-- [ ] **Step 4:** Run `npm test && npm run typecheck && npm run lint && npm run build` -> confirm GREEN.
-- [ ] **Step 5:** Commit `feat(frontend): build 3-pane workspace with live Agent Stepper and citation inspector`.
+- [x] **Step 1:** Write failing React Testing Library tests covering `InferenceModeSwitch` toggling `LOCAL_ONPREM` <-> `CLOUD_API`, `AgentExecutionStepper` rendering retry attempts, clickable `[doc_id:pX]` citation pills opening `EvidenceInspectorDrawer`, and document upload status polling (`PENDING -> READY`).
+- [x] **Step 2:** Run `npm test` -> confirm RED.
+- [x] **Step 3:** Implement all workspace components per `docs/Design-System.md`.
+- [x] **Step 4:** Run `npm test && npm run typecheck && npm run lint` -> confirm GREEN (`npm run build` deferred to Phase 7 Linux Docker build due to Windows `exFAT` drive `readlink EISDIR` limitation on `F:\`).
+- [x] **Step 5:** Commit `feat(frontend): build 3-pane workspace with live Agent Stepper and citation inspector`.
 
 ---
 
