@@ -1,0 +1,80 @@
+# ==========================================
+# Sovereign Agentic RAG (.gitignore)
+# ==========================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Node.js / Next.js ---
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# --- Local Storage, Vector DB, Caches & Uploads ---
+qdrant_storage/
+ollama_models/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+uploads/
+.fastembed_cache/
+.cache/
+.cache_st/
+eval/reports/*.json
+!eval/reports/.gitkeep
+
+# --- OS & IDE ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Personal Study Notes (Local Only) ---
+docs/FOR-PERSONAL-REFERENCE.md
+docs/Panduan-Rujukan-Peribadi-Amirul.md
+
