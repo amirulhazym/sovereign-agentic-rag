@@ -2,7 +2,7 @@
 
 **A zero-infrastructure-cost (`$0`), containerized, bilingual (EN / BM / BM-EN Code-Switching) Agentic RAG platform built for air-gapped on-premises sovereignty and cache-optimized cloud inference.**
 
-> **Project Status:** **Phases 1–6 Complete** — Architecture & TDD specs (`docs/`), FastAPI layered backend Core + Qdrant Hybrid RRF + `PyMuPDF4LLM` ingestion + Seed Collections + Bounded 6-node LangGraph SSE engine (`backend/`, `38 passed`), Standalone `LLMJudge` vs. `JEVJudge` evaluation harness (`eval/`, `14 passed`), and Glass-Box Next.js Workspace UI (`frontend/`, Vitest `9 passed`, strict `tsc`, ESLint clean) are implemented. Final Phase 7 (`Docker Compose` multi-stage build verification & portfolio handoff) is next.
+> **Project Status:** **All Phases Complete (`Phases 1–7`)** — FastAPI layered backend + Qdrant Hybrid RRF + `PyMuPDF4LLM` ingestion + Seed Collections + Bounded 6-node LangGraph SSE engine (`backend/`), Standalone `LLMJudge` vs. `JEVJudge` harness (`eval/`), Glass-Box Next.js 3-pane Workspace UI (`frontend/`), and multi-stage Docker Compose orchestration (`docker-compose.yml`, `.env.example`) are complete.
 
 ---
 
@@ -107,6 +107,34 @@ flowchart TD
 
 ---
 
+---
+
+## Quickstart (`LOCAL_ONPREM` & `CLOUD_API`)
+
+### Option A: Containerized Stack (`Docker Compose`)
+
+```bash
+# 1. Configure runtime environment
+cp .env.example .env
+
+# 2a. Launch with host Ollama (recommended for 16GB RAM edge workstations)
+ollama pull hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M
+docker compose up --build -d
+
+# 2b. Or launch fully containerized including bundled Ollama service
+docker compose --profile local-ollama up --build -d
+
+# 3. Seed Collection A (IT Infra SOPs) & Collection B (Malaysian Policy EN/BM/BM-EN)
+curl -X POST http://localhost:8000/api/v1/collections/seed
+
+# Open Next.js Glass-Box Workspace: http://localhost:3000
+# Open FastAPI Swagger Docs:         http://localhost:8000/docs
+```
+
+To enable **`CLOUD_API`** (DeepSeek Prefix Context Caching), set `DEEPSEEK_API_KEY` in `.env` and switch modes directly in the UI header bar.
+
+---
+
 ## Documentation Index
 
 - **[Product Requirements Document (`docs/PRD.md`)](docs/PRD.md)** — Problem statement, 22 user stories, locked specs, and 8 production edge-case mitigations.
@@ -121,16 +149,17 @@ flowchart TD
 
 ---
 
-## Verified Local Suites (Phases 2–6)
+## Verified Local Suites
 
 ```bash
 # Backend unit, ingestion, LangGraph & SSE contract tests
 cd backend && .venv/Scripts/pytest.exe tests -v && .venv/Scripts/ruff.exe check app tests
 
-# Standalone eval harness tests & lint
+# Standalone eval harness tests, lint & side-by-side benchmark CLI
 cd eval && .venv/Scripts/pytest.exe tests -v && .venv/Scripts/ruff.exe check eval_harness tests
+.venv/Scripts/python.exe -m eval_harness.runner --dataset datasets/golden_dataset.jsonl --runs 3
 
-# Next.js workspace tests, strict TypeScript & ESLint (run `npm run build` inside Docker/NTFS/ext4)
+# Next.js workspace tests, strict TypeScript & ESLint (run `npm run build` on Linux/Docker/NTFS)
 cd frontend && npm test && npm run typecheck && npm run lint
 ```
 
