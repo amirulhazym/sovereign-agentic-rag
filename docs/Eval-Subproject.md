@@ -114,7 +114,7 @@ class BaseJudgeEvaluator(ABC):
 ## 3. Judge Implementations
 
 ### 3.1 Judge 1: `LLMJudgeEvaluator` (`LLM-as-a-Judge`)
-- **Backends:** OpenAI-compatible client targeting DeepSeek (`deepseek-chat`, `temperature=0.0`, `response_format={"type": "json_object"}`) or local Ollama / HF GGUF (`Qwen3.8` quantized via `LOCAL_LLM_MODEL` with `/no_think`).
+- **Backends:** OpenAI-compatible client targeting DeepSeek (`deepseek-chat`, `temperature=0.0`, `response_format={"type": "json_object"}`) or local Ollama (`hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M` / `Qwen3.8-9B-Distill-GGUF:Q4_K_M` via `LOCAL_LLM_MODEL` with `<think>` stripping).
 - **Prompt Structure:** Static system grading rubric ($\ge 1,024$ tokens for DeepSeek prefix caching) followed by dynamic `(question, ground_truth_answer, retrieved_contexts, answer)` payload.
 - **Metrics Scored:**
   1. **Faithfulness:** Fraction of factual claims in `output.answer` strictly supported by `output.retrieved_contexts`.

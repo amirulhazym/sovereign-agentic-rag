@@ -5,42 +5,79 @@
 
 ---
 
-## 1. End-to-End Agentic RAG Pipeline & System Architecture
+## 1. Unified End-to-End Agentic RAG System Architecture
 
-`sovereign-agentic-rag` combines a **bounded 6-node LangGraph agent loop** with four decoupled infrastructure tiers orchestrated via Docker Compose at **$0 infrastructure cost**.
+`sovereign-agentic-rag` integrates async document ingestion, sovereign hybrid persistence, a **bounded 6-node LangGraph agent loop**, dual-mode inference, typed SSE streaming, and standalone evaluation into a single cohesive end-to-end architecture at **$0 infrastructure cost**:
 
-### 1.1 End-to-End Agentic Pipeline: User Query to Streamed Response
-
-Unlike `v1`/`v2`'s linear one-shot pipe, every query traverses an autonomous decision, retrieval, reranking, self-reflective grading, and bounded self-correction loop:
+### 1.1 Whole-System End-to-End Architecture Diagram
 
 ```mermaid
 flowchart TD
-    User(["1. User Query (EN / BM / BM-EN)<br/>+ collection_id + InferenceMode"]) -->|"POST /api/v1/chat/stream"| Router["2. QueryRouter (/no_think JSON)<br/>Detect Language & Classify Intent"]
+    subgraph UI_Tier["1. Next.js Workspace UI (App Router + TypeScript)"]
+        UploadUI["Document Uploader (.pdf / .md / .txt)<br/>+ Collection Selector + Mode Switcher"]
+        ChatUI["User Query Input (EN / BM / BM-EN)<br/>+ Stop Button (AbortController)"]
+        ResponseUI["Glass-Box Response View<br/>Live Agent Stepper | Streaming Answer | Clickable [doc_id:pX] Inspector"]
+    end
 
-    Router -->|"route == direct<br/>(Greeting / Meta)"| Gen
-    Router -->|"single_collection / multi_doc_compare"| Rewriter["3. QueryRewriter (/no_think JSON)<br/>Bilingual BM<->EN & Acronym Expansion"]
+    subgraph Ingest_Track["2. Async Structure-Aware Ingestion Pipeline (FastAPI BackgroundTasks)"]
+        Hash["SHA-256 Deduplicator<br/>(HTTP 202 Accepted -> asyncio.to_thread)"]
+        Parser["PyMuPDF4LLM Layout Parser<br/>(Preserve Headings, Tables & Page Numbers)"]
+        Chunker["Two-Tier Hierarchical Chunker<br/>Parent (1,200-1,500 tok) + Child (300-400 tok + Breadcrumb)"]
+        FastEmbedIngest["FastEmbed ONNX<br/>Dense (bge-m3) + Sparse (bm25)"]
+        Hash --> Parser --> Chunker --> FastEmbedIngest
+    end
 
-    Rewriter --> Retriever["4. HybridRetriever<br/>FastEmbed Dense (bge-m3) + Sparse (bm25)"]
-    Retriever --> Qdrant[("Qdrant Server-Side RRF<br/>Pre-Filter: collection_id")]
-    Qdrant -->|"Matched ChildChunk parent_ids"| SQLiteHydrate[("SQLite ParentChunk Hydration<br/>Full Tables, Clauses & Page Numbers")]
-    SQLiteHydrate --> Reranker["5. CrossEncoderReranker<br/>ONNX bge-reranker-v2-m3 (Top 5)"]
-    Reranker --> Grader{"6. RelevanceGrader (/no_think)<br/>Self-Reflective Evidence Gate"}
+    subgraph Storage_Tier["3. Shared Sovereign Persistence Layer (Docker Volumes)"]
+        SQLite[("SQLite Async (aiosqlite)<br/>collections | documents | parent_chunks | chat_history")]
+        Qdrant[("Qdrant Vector DB<br/>Named Dense + Sparse BM25 Vectors<br/>Server-Side RRF + collection_id Payload Index")]
+    end
 
-    Grader -->|"Insufficient & retry_count < 2<br/>(Agentic Self-Correction Loop)"| Rewriter
-    Grader -->|"Insufficient & retry_count == 2"| Refusal["Deterministic GracefulRefusal<br/>(Bilingual Refusal, citations: [])"]
-    Grader -->|"Grounded Evidence Approved"| Gen["7. GroundedGenerator<br/>Static-to-Dynamic Prompt (>=1,024 tok prefix)"]
+    subgraph Agentic_Loop["4. Bounded LangGraph Agentic RAG State Machine (max_retries = 2)"]
+        N1["Node 1: QueryRouter (/no_think JSON)<br/>Detect Language (EN/BM/Mixed) & Classify Intent"]
+        N2["Node 2: QueryRewriter (/no_think JSON)<br/>Expand Acronyms & Bilingual BM<->EN Terms"]
+        N3["Node 3: HybridRetriever<br/>Dense+Sparse RRF Search -> SQLite ParentChunk Hydration"]
+        N4["Node 4: CrossEncoderReranker<br/>Local ONNX bge-reranker-v2-m3 (Top-5 Parents)"]
+        N5{"Node 5: RelevanceGrader (/no_think)<br/>Self-Reflective Evidence Sufficiency Check"}
+        Refusal["Deterministic GracefulRefusal<br/>(Bilingual Polite Refusal, citations: [])"]
+        N6["Node 6: GroundedGenerator + CitationValidator<br/>Static-to-Dynamic Prompt (>=1,024 tok) + Regex [doc_id:pX] Guard"]
 
-    Gen -->|"LOCAL_ONPREM"| LocalLLM["Ollama / HF GGUF<br/>(Qwen3.8 Quantized Series)"]
-    Gen -->|"CLOUD_API"| CloudLLM["DeepSeek API<br/>(Prefix Context Caching)"]
-    LocalLLM --> Validator["8. CitationValidator<br/>Normalize [doc_id:pX] & Strip Phantoms"]
-    CloudLLM --> Validator
+        N1 -->|"route: retrieve / compare"| N2
+        N1 -->|"route: direct"| N6
+        N2 --> N3 --> N4 --> N5
+        N5 -->|"Insufficient & retry_count < 2<br/>(Autonomous Self-Correction Loop)"| N2
+        N5 -->|"Insufficient & retry_count == 2"| Refusal
+        N5 -->|"Evidence Approved"| N6
+    end
 
-    Validator --> SSE["9. Typed SSE Stream -> Next.js UI<br/>node_status | token | citations | done | error"]
-    Refusal --> SSE
-    SSE --> UI(["Next.js Glass-Box Workspace<br/>Live Agent Stepper + Markdown + Clickable Citations"])
+    subgraph Inference_Seam["5. Dual-Mode Inference Provider Seam ($0 Infra)"]
+        LocalLLM["LOCAL_ONPREM (Air-Gapped 16GB RAM)<br/>Ollama GGUF: empero-ai/Qwen3.8-4B-Distill (2.78GB)<br/>or empero-ai/Qwen3.8-9B-Distill (5.78GB)"]
+        CloudLLM["CLOUD_API (Cache-Optimized)<br/>DeepSeek API (deepseek-chat)<br/>Prefix Context Cache Hit"]
+    end
+
+    subgraph Eval_Tier["6. Decoupled Standalone Evaluation Harness (eval/ CLI)"]
+        EvalRunner["golden_dataset.jsonl (36 EN/BM/Mixed + Refusal Traps)<br/>-> RAGTargetAdapter -> LLMJudge vs JEVJudge (Local NLI)<br/>-> Latency, Cost ($), Variance & Cohen's Kappa Report"]
+    end
+
+    UploadUI -->|"POST /api/v1/collections/{id}/documents"| Hash
+    Chunker -->|"Store Full ParentChunks"| SQLite
+    FastEmbedIngest -->|"Upsert ChildChunks + Metadata"| Qdrant
+
+    ChatUI -->|"POST /api/v1/chat/stream"| N1
+    N3 <-->|"1. Child RRF Match"| Qdrant
+    N3 <-->|"2. Hydrate Unique Parents"| SQLite
+
+    N1 -.->|"Control JSON"| Inference_Seam
+    N2 -.->|"Control JSON"| Inference_Seam
+    N5 -.->|"Control JSON"| Inference_Seam
+    N6 <-->|"Stream Tokens (LOCAL_ONPREM)"| LocalLLM
+    N6 <-->|"Stream Tokens (CLOUD_API)"| CloudLLM
+
+    N6 -->|"Typed SSE Stream:<br/>node_status | token | citations | done | error"| ResponseUI
+    Refusal -->|"Typed SSE Stream:<br/>node_status | token | done"| ResponseUI
+    EvalRunner -->|"HTTP SSE Contract"| N1
 ```
 
-### ASCII End-to-End Pipeline Trace (User Query $\rightarrow$ Agentic Loop $\rightarrow$ User Response)
+### 1.2 ASCII End-to-End Pipeline Trace (User Query $\rightarrow$ Agentic Loop $\rightarrow$ User Response)
 
 ```text
 [USER QUERY IN NEXT.JS]  ("Apa prosedur tuntutan OT kalau kerja public holiday?")
@@ -70,55 +107,13 @@ flowchart TD
 │       └─ YES (Evidence Approved) ───────────────────────────────────────────────────────┘                             │
 │            ▼                                                                                                          │
 │  [6. GroundedGenerator] ──► Static Prefix (>=1,024 tok) + History + Sorted Parents + Question                         │
-│       ├─ LOCAL_ONPREM: Ollama / llama.cpp (Qwen3.8 quantized GGUF / free source)                                      │
+│       ├─ LOCAL_ONPREM: Ollama GGUF (empero-ai/Qwen3.8-4B-Distill:Q4_K_M or Qwen3.8-9B-Distill:Q4_K_M) + <think> strip │
 │       └─ CLOUD_API:    DeepSeek API (deepseek-chat, Prefix Context Caching)                                           │
 │            ▼  streams `event: token` + runs regex `CitationValidator` ([doc_id:pX])                                   │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
    │
    ▼  emits `event: citations` + `event: done` (cache_hit_tokens, latency_ms) & persists to SQLite
 [NEXT.JS WORKSPACE UI]  Renders Live Agent Stepper + Streaming Answer + Clickable [doc_id:pX] Evidence Drawer
-```
-
-### 1.2 Container & Persistence Topology (4 Decoupled Tiers)
-
-```mermaid
-flowchart TB
-    subgraph Client["Frontend Tier (Next.js App Router + TypeScript)"]
-        UI["Workspace UI (3-Pane Glass-Box)<br/>Collection Selector | Mode Switcher | Agent Stepper | Citation Cards"]
-    end
-
-    subgraph Backend["Backend Tier (Layered FastAPI + Pydantic v2)"]
-        Router["API v1 Routers (/chat/stream, /collections, /documents, /health, /ready)"]
-        Ingest["DocumentIngestionService (PyMuPDF4LLM + Parent-Child + SHA-256)"]
-        Graph["AgenticRAGWorkflow (LangGraph State Machine, max_retries=2)"]
-        Adapters["Inference Seam (LLMProvider & EmbeddingProvider)"]
-        Router --> Ingest
-        Router --> Graph
-        Graph --> Adapters
-    end
-
-    subgraph Data["Persistence Tier (Docker Volumes)"]
-        Qdrant[("Qdrant Vector DB<br/>Named Dense + Sparse BM25<br/>Server-Side RRF + Payload Filters")]
-        SQLite[("SQLite (aiosqlite)<br/>Collections, DocumentRecords,<br/>ParentChunks, ChatHistory")]
-    end
-
-    subgraph Inference["Dual-Mode Inference Providers"]
-        Local["LOCAL_ONPREM (Air-Gapped)<br/>Ollama / HF GGUF (Qwen3.8 Quantized Series)<br/>FastEmbed (bge-m3 / bm25) + ONNX Reranker"]
-        Cloud["CLOUD_API (Cache-Optimized)<br/>DeepSeek API (deepseek-chat)<br/>Static-to-Dynamic Prefix Caching"]
-    end
-
-    subgraph Eval["Decoupled Evaluation Sub-Project (eval/)"]
-        Harness["CLI Runner + RAGTargetAdapter<br/>LLMJudge vs JEVJudge -> Report"]
-    end
-
-    UI <-->|"REST + Typed SSE (POST /api/v1/chat/stream)"| Router
-    Ingest --> Qdrant
-    Ingest --> SQLite
-    Graph --> Qdrant
-    Graph --> SQLite
-    Adapters -->|"LOCAL_ONPREM"| Local
-    Adapters -->|"CLOUD_API"| Cloud
-    Harness -->|"HTTP Contract"| Router
 ```
 
 ---
@@ -346,9 +341,9 @@ data: {"code": "OLLAMA_UNAVAILABLE", "message": "Local Ollama daemon unreachable
 ## 7. The 8 Production Edge-Case Mitigations
 
 1. **16GB RAM Budget (`LOCAL_ONPREM` OOM Prevention):**
-   - Budget breakdown on 16GB edge workstation: OS/Docker/Qdrant/Next.js (~5.5 GB) + FastEmbed ONNX (`BAAI/bge-m3` + `Qdrant/bm25`, <0.5 GB) + ONNX Cross-Encoder (<0.6 GB) = ~6.6 GB baseline, leaving **~9.4 GB headroom** for the **`Qwen3.8` series** quantized model configured via `LOCAL_LLM_MODEL` (e.g., Ollama pulling low-bit Hugging Face / Unsloth Dynamic v3.1 GGUFs like `hf.co/unsloth/Qwen3.8-27B-GGUF` small quants, `Qwen3.8-Flash-Next-GGUF`, compact quantized `qwen3.8` releases, or a free OpenAI-compatible `Qwen3.8` endpoint when running on a 16GB CPU-only laptop; larger quants like `Q4_K_M` ~14–17GB are seamlessly supported on 24GB+ workstations via `.env`). Configured with `OLLAMA_KEEP_ALIVE=5m` and `OLLAMA_NUM_PARALLEL=1`. `eval/` runs in a separate CLI process so `JEVJudge` weights never occupy `backend/` RAM.
-2. **Disabling `<think>` Overhead on Control Nodes:**
-   - `QueryRouter`, `QueryRewriter`, and `RelevanceGrader` disable reasoning/thinking overhead (`/no_think` or `reasoning_effort="none"` / `think=false` for `Qwen3.8` via Ollama, and `deepseek-chat` with `temperature=0.0` + `response_format={"type": "json_object"}` for DeepSeek), eliminating multi-second chain-of-thought stalls before retrieval even begins.
+   - Budget breakdown on 16GB edge workstation: OS/Docker/Qdrant/Next.js (~5.5 GB) + FastEmbed ONNX (`BAAI/bge-m3` + `Qdrant/bm25`, <0.5 GB) + ONNX Cross-Encoder (<0.6 GB) = ~6.6 GB baseline. Default local model is **`hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M` (`2.783 GB`, Apache-2.0, full distillation of `Qwen3.8 2.4T A95B`)** bringing total RAM to **~9.4 GB** with ample headroom; **`hf.co/empero-ai/Qwen3.8-9B-Distill-GGUF:Q4_K_M` (`5.780 GB`)** serves as the high-precision option via `LOCAL_LLM_MODEL`. Requires `ollama/ollama:latest` (recent `llama.cpp` Gated DeltaNet support), configured with `OLLAMA_KEEP_ALIVE=5m` and `OLLAMA_NUM_PARALLEL=1`. `eval/` runs in a separate CLI process so `JEVJudge` weights never occupy `backend/` RAM.
+2. **Disabling & Stripping `<think>` Overhead:**
+   - Because `empero-ai/Qwen3.8-*-Distill-GGUF` models are reasoning models that open responses with a `<think>...</think>` span, `LocalOnPremLLMAdapter` enforces `temperature=0.0` + `/no_think` / bounded token budget + automatic `<think>...</think>` regex/stream stripping on `QueryRouter`, `QueryRewriter`, and `RelevanceGrader`, while streaming clean post-`<think>` answer tokens at `temperature=0.6, top_p=0.95, top_k=20` on `GroundedGenerator` (`deepseek-chat` uses `temperature=0.0` + JSON mode for control nodes).
 3. **DeepSeek Prefix Context Caching (`CLOUD_API`):**
    - Messages are ordered strictly **static-to-dynamic**:
      1. Static System Instruction + Citation Syntax Rules + Bilingual Few-Shot Examples ($\ge 1,024$ tokens, byte-identical across requests).

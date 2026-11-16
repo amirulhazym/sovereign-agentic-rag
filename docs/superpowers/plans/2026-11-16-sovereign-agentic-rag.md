@@ -6,13 +6,13 @@
 
 **Architecture:** Layered FastAPI backend (`routers -> services -> agents -> repositories/providers`) communicating with async SQLite + self-hosted Qdrant, exposed via typed SSE (`POST /api/v1/chat/stream`) to a Next.js App Router TypeScript UI, and benchmarked externally via a standalone `eval/` CLI harness.
 
-**Tech Stack:** Python 3.11+, FastAPI, Pydantic v2, LangGraph, Qdrant (`qdrant-client`), FastEmbed (ONNX), PyMuPDF4LLM, `aiosqlite`/SQLAlchemy, Ollama / HF GGUF (`Qwen3.8` quantized series via `LOCAL_LLM_MODEL`), DeepSeek API, Next.js (App Router, TypeScript, Tailwind CSS), Docker Compose.
+**Tech Stack:** Python 3.11+, FastAPI, Pydantic v2, LangGraph, Qdrant (`qdrant-client`), FastEmbed (ONNX), PyMuPDF4LLM, `aiosqlite`/SQLAlchemy, Ollama (`hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M` / `Qwen3.8-9B-Distill-GGUF:Q4_K_M`), DeepSeek API, Next.js (App Router, TypeScript, Tailwind CSS), Docker Compose.
 
 ## Global Constraints
 - Strictly `$0` infrastructure cost (self-hosted Qdrant, SQLite, Ollama/FastEmbed; optional DeepSeek API).
 - Zero import-time side effects: instantiate models/DB clients in FastAPI `lifespan` and wire via `Depends()`.
-- Protect 16GB RAM budget: use FastEmbed (ONNX) instead of PyTorch `sentence-transformers` in `backend/`, configure quantized `Qwen3.8` models via `LOCAL_LLM_MODEL` (`OLLAMA_KEEP_ALIVE=5m`, `OLLAMA_NUM_PARALLEL=1`), and isolate `JEVJudge` weights inside `eval/`.
-- Disable thinking overhead (`/no_think` / `think=false` on `Qwen3.8`) and enforce `temperature=0.0` + JSON mode on control nodes (`QueryRouter`, `QueryRewriter`, `RelevanceGrader`).
+- Protect 16GB RAM budget: use FastEmbed (ONNX) instead of PyTorch `sentence-transformers` in `backend/`, default `LOCAL_LLM_MODEL` to `hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M` (`OLLAMA_KEEP_ALIVE=5m`, `OLLAMA_NUM_PARALLEL=1`), and isolate `JEVJudge` weights inside `eval/`.
+- Strip `<think>...</think>` spans on `empero-ai/Qwen3.8-*-Distill-GGUF` outputs and enforce `temperature=0.0` + `/no_think` / JSON mode on control nodes (`QueryRouter`, `QueryRewriter`, `RelevanceGrader`).
 - Order `GroundedGenerator` prompt static-to-dynamic ($\ge 1,024$ token static prefix -> collection header -> history -> sorted `ParentChunk`s -> current question) for DeepSeek Prefix Caching.
 - Cap LangGraph loops at `max_retries=2`; route exhausted retries to deterministic bilingual `GracefulRefusal` (`citations: []`).
 - Normalize and strip phantom citations via `CitationValidator` against retrieved `ParentChunk` metadata.

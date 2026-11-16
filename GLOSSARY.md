@@ -29,7 +29,7 @@ The canonical inline citation token `[doc_id:pX]` (e.g., `[hr_policy_my:p4]`) em
 
 ### `InferenceMode`
 The runtime sovereignty toggle (`LOCAL_ONPREM` vs. `CLOUD_API`) selecting which `LLMProvider` and `EmbeddingProvider` adapters handle a request:
-- `LOCAL_ONPREM`: 100% air-gapped self-hosted execution via Ollama / llama.cpp (`Qwen3.8` quantized GGUF series via Hugging Face/Unsloth or free OpenAI-compatible local models, configurable via `LOCAL_LLM_MODEL`) + FastEmbed (`BAAI/bge-m3` / `Qdrant/bm25`) + ONNX Cross-Encoder.
+- `LOCAL_ONPREM`: 100% air-gapped self-hosted execution via Ollama / llama.cpp (`hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M` default or `Qwen3.8-9B-Distill-GGUF:Q4_K_M` option via `LOCAL_LLM_MODEL`) + FastEmbed (`BAAI/bge-m3` / `Qdrant/bm25`) + ONNX Cross-Encoder.
 - `CLOUD_API`: Cost-optimized DeepSeek API (`deepseek-chat` / `deepseek-reasoner`) arranged for **Prefix Context Caching**.
 
 ### `GracefulRefusal`
