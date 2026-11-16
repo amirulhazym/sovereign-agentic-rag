@@ -18,6 +18,7 @@ from app.providers.embeddings import EmbeddingProvider, FastEmbedProvider
 from app.repositories.qdrant_repo import QdrantHybridRepository, VectorRepository
 from app.repositories.sqlite_repo import SQLiteRepository
 from app.services.ingestion import DocumentIngestionService
+from app.services.seeder import SeederService, resolve_seed_dir
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +58,16 @@ def create_app(
         app.state.sqlite_repo = db_repo
         app.state.vector_repo = resolved_vector_repo
         app.state.embedding_provider = resolved_embedder
-        app.state.ingestion_service = DocumentIngestionService(
+        ingestion_service = DocumentIngestionService(
             sqlite_repo=db_repo,
             vector_repo=resolved_vector_repo,
             embedding_provider=resolved_embedder,
+        )
+        app.state.ingestion_service = ingestion_service
+        app.state.seeder_service = SeederService(
+            sqlite_repo=db_repo,
+            ingestion_service=ingestion_service,
+            seed_dir=resolve_seed_dir(resolved_settings.seed_collections_dir),
         )
 
         try:

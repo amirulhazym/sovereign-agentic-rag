@@ -7,6 +7,7 @@ from app.providers.embeddings import EmbeddingProvider
 from app.repositories.qdrant_repo import VectorRepository
 from app.repositories.sqlite_repo import SQLiteRepository
 from app.services.ingestion import DocumentIngestionService
+from app.services.seeder import SeederService
 
 
 def get_settings(request: Request) -> Settings:
@@ -32,3 +33,8 @@ def get_embedding_provider(request: Request) -> EmbeddingProvider:
 def get_ingestion_service(request: Request) -> DocumentIngestionService:
     """Return DocumentIngestionService from app.state."""
     return request.app.state.ingestion_service
+
+
+def get_seeder_service(request: Request) -> SeederService:
+    """Return SeederService from app.state."""
+    return request.app.state.seeder_service

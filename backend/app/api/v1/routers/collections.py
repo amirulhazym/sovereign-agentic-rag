@@ -4,9 +4,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from app.core.dependencies import get_sqlite_repo
+from app.core.dependencies import get_seeder_service, get_sqlite_repo
 from app.repositories.sqlite_repo import SQLiteRepository
 from app.schemas.workspace import CollectionCreate, CollectionRead, DocumentRead
+from app.services.seeder import SeederService, SeedReport
 
 router = APIRouter(prefix="/api/v1/collections", tags=["collections"])
 
@@ -31,6 +32,19 @@ async def create_collection(
 ) -> CollectionRead:
     """Register a new tenant Collection workspace."""
     return await sqlite_repo.create_collection(payload)
+
+
+@router.post(
+    "/seed",
+    response_model=SeedReport,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Idempotently seed pre-curated Collection A & Collection B demos",
+)
+async def seed_collections(
+    seeder_service: Annotated[SeederService, Depends(get_seeder_service)],
+) -> SeedReport:
+    """Populate Collection A (IT SOPs) and Collection B (Malaysian Policy) demos."""
+    return await seeder_service.seed_all()
 
 
 @router.get(

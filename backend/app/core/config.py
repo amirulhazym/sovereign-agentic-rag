@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection_name: str = "sovereign_rag_chunks"
     sqlite_url: str = "sqlite+aiosqlite:///./sovereign_rag.db"
+    seed_collections_dir: str = ""
 
     # Bounded agent loop invariant
     max_retries: int = 2

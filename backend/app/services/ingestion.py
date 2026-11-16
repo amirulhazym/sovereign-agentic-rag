@@ -52,6 +52,7 @@ class DocumentIngestionService:
         collection_id: str,
         filename: str,
         file_bytes: bytes,
+        doc_id: str | None = None,
     ) -> UploadDispatchResult:
         """Validate collection/file type and register or deduplicate DocumentRecord."""
         await self._sqlite.get_collection(collection_id)
@@ -69,10 +70,10 @@ class DocumentIngestionService:
                 return UploadDispatchResult(document=reset_doc, deduplicated=False)
             return UploadDispatchResult(document=existing, deduplicated=True)
 
-        doc_id = f"doc_{uuid4().hex[:12]}"
+        resolved_doc_id = doc_id or f"doc_{uuid4().hex[:12]}"
         created = await self._sqlite.create_document(
             DocumentCreate(
-                doc_id=doc_id,
+                doc_id=resolved_doc_id,
                 collection_id=collection_id,
                 filename=filename,
                 doc_type=doc_type,
