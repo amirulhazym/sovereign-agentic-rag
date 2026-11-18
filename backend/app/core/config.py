@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     """Typed runtime settings for Sovereign Agentic RAG."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -42,7 +42,9 @@ class Settings(BaseSettings):
 
     # Persistence endpoints
     qdrant_url: str = "http://localhost:6333"
+    qdrant_local_path: str = ""
     qdrant_collection_name: str = "sovereign_rag_chunks"
+    fastembed_cache_dir: str = "F:/.cache/fastembed"
     sqlite_url: str = "sqlite+aiosqlite:///./sovereign_rag.db"
     seed_collections_dir: str = ""
 

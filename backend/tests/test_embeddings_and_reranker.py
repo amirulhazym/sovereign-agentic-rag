@@ -7,6 +7,8 @@ from app.providers.embeddings import (
     FakeRerankerProvider,
     FastEmbedProvider,
     ONNXRerankerProvider,
+    _ensure_bge_m3_registered,
+    _resolve_reranker_model_name,
 )
 from app.schemas.workspace import ParentChunkRecord
 
@@ -112,3 +114,19 @@ async def test_fake_embedding_and_reranker_are_deterministic() -> None:
     ]
     ranked = await reranker.rerank("NVMe ERR_NVME_0x04", candidates, top_k=1)
     assert ranked[0].parent.parent_id == "p2"
+
+
+def test_ensure_bge_m3_registered_adds_custom_onnx_model_to_fastembed() -> None:
+    """Verify BAAI/bge-m3 quantized Xenova ONNX is registered idempotently and int8 resolves."""
+    from fastembed import TextEmbedding
+
+    _ensure_bge_m3_registered()
+    _ensure_bge_m3_registered()  # Idempotent repeat call must not raise
+
+    matched = [m for m in TextEmbedding.list_supported_models() if m["model"] == "BAAI/bge-m3"]
+    assert len(matched) == 1
+    assert matched[0]["dim"] == 1024
+    assert matched[0]["sources"]["hf"] == "Xenova/bge-m3"
+
+    assert _resolve_reranker_model_name("BAAI/bge-reranker-v2-m3") == "BAAI/bge-reranker-v2-m3-int8"
+    assert _resolve_reranker_model_name("BAAI/bge-reranker-base") == "BAAI/bge-reranker-base"

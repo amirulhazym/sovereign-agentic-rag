@@ -161,9 +161,50 @@ async def test_llm_judge_ollama_local_is_zero_cost_and_penalizes_hallucinated_tr
 
     assert verdict.estimated_cost_usd == 0.0
     assert "/no_think" in captured_payloads[0]["messages"][1]["content"]
+    assert captured_payloads[0]["think"] is False
     # Hallucinating on an unanswerable_refusal trap must force faithfulness=0.0 and FAIL
     assert verdict.faithfulness == 0.0
     assert verdict.decision == "FAIL"
+
+
+async def test_llm_judge_recovers_truncated_rationale_json() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code=200,
+            json={
+                "message": {
+                    "content": (
+                        '{\n  "faithfulness": 0.8,\n  "answer_relevancy": 0.9,\n'
+                        '  "context_recall": 0.7,\n  "rationale": "Truncated mid sentence'
+                    )
+                },
+                "prompt_eval_count": 1100,
+                "eval_count": 128,
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://localhost:11434"
+    ) as client:
+        judge = LLMJudgeEvaluator(
+            backend="ollama", base_url="http://localhost:11434", http_client=client
+        )
+        verdict = await judge.evaluate(
+            _sample_policy(),
+            RAGOutput(
+                sample_id="pol_mix_001",
+                answer="Layak bayaran 2.0x atau cuti gantian dalam 7 hari.",
+                retrieved_contexts=_sample_policy().ground_truth_contexts,
+                citations=[],
+                refusal_triggered=False,
+                target_latency_ms=100.0,
+            ),
+        )
+    assert verdict.faithfulness == 0.8
+    assert verdict.answer_relevancy == 0.9
+    assert verdict.context_recall == 0.7
+    assert verdict.decision == "PASS"
 
 
 class _FakeDeterministicNLIBackend:

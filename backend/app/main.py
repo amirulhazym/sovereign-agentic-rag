@@ -55,6 +55,15 @@ def create_app(
         qdrant_client: AsyncQdrantClient | None = None
         if vector_repo is not None:
             resolved_vector_repo = vector_repo
+        elif resolved_settings.qdrant_local_path:
+            qdrant_client = AsyncQdrantClient(path=resolved_settings.qdrant_local_path)
+            resolved_vector_repo = QdrantHybridRepository(
+                client=qdrant_client,
+                collection_name=resolved_settings.qdrant_collection_name,
+                dense_dim=resolved_settings.embedding_dense_dim,
+                is_local_path=True,
+            )
+            await resolved_vector_repo.ensure_collection()
         else:
             qdrant_client = AsyncQdrantClient(
                 url=resolved_settings.qdrant_url,
@@ -66,12 +75,15 @@ def create_app(
                 dense_dim=resolved_settings.embedding_dense_dim,
             )
 
+        fastembed_cache = resolved_settings.fastembed_cache_dir or None
         resolved_embedder = embedding_provider or FastEmbedProvider(
             dense_model_name=resolved_settings.embedding_dense_model,
             sparse_model_name=resolved_settings.embedding_sparse_model,
+            cache_dir=fastembed_cache,
         )
         resolved_reranker = reranker_provider or ONNXRerankerProvider(
             model_name=resolved_settings.reranker_model,
+            cache_dir=fastembed_cache,
         )
 
         http_clients: list[httpx.AsyncClient] = []

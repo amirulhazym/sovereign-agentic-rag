@@ -211,9 +211,22 @@ def _parse_judge_json(raw_text: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         match = _JSON_OBJECT_RE.search(cleaned)
         if match:
-            data = json.loads(match.group(0))
-            if isinstance(data, dict):
-                return data
+            try:
+                data = json.loads(match.group(0))
+                if isinstance(data, dict):
+                    return data
+            except json.JSONDecodeError:
+                pass
+        # Recover core numeric metrics if generative rationale was truncated mid-stream
+        recovered: dict[str, Any] = {}
+        for key in ("faithfulness", "answer_relevancy", "context_recall"):
+            num_match = re.search(rf'"{key}"\s*:\s*([0-9]+(?:\.[0-9]+)?)', cleaned)
+            if num_match:
+                recovered[key] = float(num_match.group(1))
+        if len(recovered) == 3:
+            rat_match = re.search(r'"rationale"\s*:\s*"([^"]*)', cleaned)
+            recovered["rationale"] = rat_match.group(1).strip() if rat_match else ""
+            return recovered
     raise ValueError(f"LLMJudge failed to produce valid JSON object: {raw_text[:200]!r}")
 
 
@@ -227,7 +240,7 @@ class LLMJudgeEvaluator(BaseJudgeEvaluator):
         model: str = "deepseek-chat",
         base_url: str | None = None,
         api_key: str = "",
-        timeout_seconds: float = 90.0,
+        timeout_seconds: float = 300.0,
         input_miss_cost_per_1m: float = 0.27,
         input_hit_cost_per_1m: float = 0.07,
         output_cost_per_1m: float = 1.10,
@@ -322,8 +335,9 @@ class LLMJudgeEvaluator(BaseJudgeEvaluator):
                 "model": self._model,
                 "messages": messages,
                 "stream": False,
+                "think": False,
                 "format": "json",
-                "options": {"temperature": 0.0},
+                "options": {"temperature": 0.0, "num_ctx": 8192},
             },
         )
         response.raise_for_status()

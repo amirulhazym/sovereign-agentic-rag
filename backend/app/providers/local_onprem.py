@@ -100,6 +100,24 @@ class StreamingThinkFilter:
         return tail
 
 
+def _normalize_messages_for_qwen_template(
+    messages: list[ChatMessage],
+) -> list[dict[str, str]]:
+    """Merge system prompts into index 0 for Qwen3.8 Jinja template compatibility."""
+    system_parts: list[str] = []
+    non_system: list[dict[str, str]] = []
+    for msg in messages:
+        if msg.role == "system":
+            system_parts.append(msg.content)
+        else:
+            non_system.append(msg.model_dump())
+    normalized: list[dict[str, str]] = []
+    if system_parts:
+        normalized.append({"role": "system", "content": "\n\n".join(system_parts)})
+    normalized.extend(non_system)
+    return normalized
+
+
 class LocalOnPremLLMAdapter:
     """Adapter calling local Ollama/llama.cpp OpenAI-compatible chat completions."""
 
@@ -127,7 +145,7 @@ class LocalOnPremLLMAdapter:
         schema: type[TModel],
     ) -> TModel:
         """Run deterministic temperature=0.0 JSON control decision with /no_think hint."""
-        payload_messages = [m.model_dump() for m in messages]
+        payload_messages = _normalize_messages_for_qwen_template(messages)
         if payload_messages:
             payload_messages[-1] = {
                 "role": payload_messages[-1]["role"],
@@ -141,6 +159,7 @@ class LocalOnPremLLMAdapter:
                     "model": self._model,
                     "messages": payload_messages,
                     "temperature": 0.0,
+                    "response_format": {"type": "json_object"},
                     "stream": False,
                 },
             )
@@ -168,7 +187,7 @@ class LocalOnPremLLMAdapter:
                 headers={"Authorization": f"Bearer {self._api_key}"},
                 json={
                     "model": self._model,
-                    "messages": [m.model_dump() for m in messages],
+                    "messages": _normalize_messages_for_qwen_template(messages),
                     "temperature": 0.6,
                     "top_p": 0.95,
                     "top_k": 20,

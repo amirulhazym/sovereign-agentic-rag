@@ -14,6 +14,25 @@ def test_settings_defaults_enforce_qwen3_8_and_bounded_retries() -> None:
     assert settings.max_retries == 2
     assert settings.default_inference_mode == "LOCAL_ONPREM"
     assert settings.qdrant_collection_name == "sovereign_rag_chunks"
+    assert settings.qdrant_local_path == ""
+    assert settings.fastembed_cache_dir == "F:/.cache/fastembed"
+
+
+def test_app_boots_with_local_qdrant_path_and_ensures_collection(tmp_path) -> None:
+    """Verify lifespan supports persistent embedded Qdrant path without remote server."""
+    qdrant_dir = tmp_path / "qdrant_local"
+    sqlite_file = tmp_path / "test.db"
+    settings = Settings(
+        _env_file=None,
+        sqlite_url=f"sqlite+aiosqlite:///{sqlite_file.as_posix()}",
+        qdrant_local_path=str(qdrant_dir),
+        fastembed_cache_dir=str(tmp_path / "fastembed_cache"),
+    )
+    app = create_app(settings=settings)
+    with TestClient(app) as client:
+        resp = client.get("/health")
+        assert resp.status_code == 200
+    assert qdrant_dir.exists()
 
 
 def test_health_endpoint_returns_ok_and_request_id() -> None:

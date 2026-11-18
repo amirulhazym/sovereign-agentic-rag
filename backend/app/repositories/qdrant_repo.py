@@ -193,10 +193,12 @@ class QdrantHybridRepository:
         client: AsyncQdrantClient,
         collection_name: str = "sovereign_rag_chunks",
         dense_dim: int = 1024,
+        is_local_path: bool = False,
     ) -> None:
         self._client = client
         self._collection_name = collection_name
         self._dense_dim = dense_dim
+        self._is_local_path = is_local_path
 
     async def ping(self) -> bool:
         await self._client.get_collections()
@@ -218,18 +220,19 @@ class QdrantHybridRepository:
                 "sparse": models.SparseVectorParams(modifier=models.Modifier.IDF)
             },
         )
-        keyword_fields = ["collection_id", "doc_id", "parent_id", "language", "doc_type"]
-        for field in keyword_fields:
+        if not self._is_local_path:
+            keyword_fields = ["collection_id", "doc_id", "parent_id", "language", "doc_type"]
+            for field in keyword_fields:
+                await self._client.create_payload_index(
+                    collection_name=self._collection_name,
+                    field_name=field,
+                    field_schema=models.PayloadSchemaType.KEYWORD,
+                )
             await self._client.create_payload_index(
                 collection_name=self._collection_name,
-                field_name=field,
-                field_schema=models.PayloadSchemaType.KEYWORD,
+                field_name="page_number",
+                field_schema=models.PayloadSchemaType.INTEGER,
             )
-        await self._client.create_payload_index(
-            collection_name=self._collection_name,
-            field_name="page_number",
-            field_schema=models.PayloadSchemaType.INTEGER,
-        )
 
     async def upsert_chunks(self, items: list[VectorChunkUpsert]) -> None:
         if not items:

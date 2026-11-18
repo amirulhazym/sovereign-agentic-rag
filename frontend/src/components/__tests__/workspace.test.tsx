@@ -76,6 +76,20 @@ describe("3-Pane Glass-Box Workspace Components", () => {
     expect(screen.getByText("QueryRouter")).toBeInTheDocument();
     expect(screen.getByText("RelevanceGrader")).toBeInTheDocument();
 
+    // Also accepts live backend PascalCase node names (e.g. "QueryRouter", "RelevanceGrader")
+    rerender(
+      <AgentExecutionStepper
+        nodes={[
+          { node: "QueryRouter", status: "completed", attempt: 0, latency_ms: 9, detail: "direct" },
+          { node: "GracefulRefusal", status: "refused", attempt: 2, latency_ms: 3, detail: "stop" },
+        ]}
+        isStreaming={true}
+        doneSummary={null}
+      />,
+    );
+    expect(screen.getByText("GracefulRefusal")).toBeInTheDocument();
+    expect(screen.getByText("9ms")).toBeInTheDocument();
+
     rerender(
       <AgentExecutionStepper
         nodes={[

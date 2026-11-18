@@ -2,7 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
-from qdrant_client import models
+from qdrant_client import AsyncQdrantClient, models
 
 from app.repositories.qdrant_repo import (
     InMemoryVectorRepository,
@@ -167,3 +167,32 @@ async def test_qdrant_hybrid_repo_builds_rrf_prefetch_and_tenant_filter() -> Non
     for prefetch in query_kwargs["prefetch"]:
         assert prefetch.filter is not None
         assert prefetch.filter.must[0].key == "collection_id"
+
+
+async def test_qdrant_hybrid_repo_local_path_skips_payload_index_and_runs_rrf(tmp_path) -> None:
+    """Verify is_local_path=True avoids warnings and persists RRF vectors to disk."""
+    client = AsyncQdrantClient(path=str(tmp_path / "qdrant_disk"))
+    repo = QdrantHybridRepository(
+        client=client,
+        collection_name="local_test_chunks",
+        dense_dim=4,
+        is_local_path=True,
+    )
+    await repo.ensure_collection()
+    await repo.upsert_chunks(
+        [
+            VectorChunkUpsert(
+                chunk=_make_child("c1", "p1", "doc_1", "col_local", language="ms"),
+                dense_vector=[0.1, 0.2, 0.3, 0.4],
+                sparse_vector=SparseVectorData(indices=[1, 3], values=[0.9, 0.4]),
+            )
+        ]
+    )
+    hits = await repo.hybrid_search(
+        collection_id="col_local",
+        dense_vector=[0.1, 0.2, 0.3, 0.4],
+        sparse_vector=SparseVectorData(indices=[1], values=[0.9]),
+        top_k=3,
+    )
+    assert [h.child_id for h in hits] == ["c1"]
+    await client.close()

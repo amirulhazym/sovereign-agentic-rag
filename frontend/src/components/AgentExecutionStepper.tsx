@@ -35,6 +35,9 @@ const PIPELINE_NODES = [
   { id: "grounded_generator", label: "GroundedGenerator" },
 ] as const;
 
+const normalizeNodeKey = (nodeName: string): string =>
+  nodeName.toLowerCase().replace(/_/g, "");
+
 export function AgentExecutionStepper({
   nodes,
   isStreaming,
@@ -48,9 +51,9 @@ export function AgentExecutionStepper({
 
   const latestByNode = new Map<string, NodeStatusEventPayload>();
   for (const evt of nodes) {
-    latestByNode.set(evt.node, evt);
+    latestByNode.set(normalizeNodeKey(evt.node), evt);
   }
-  const refusalEvent = latestByNode.get("graceful_refusal");
+  const refusalEvent = latestByNode.get("gracefulrefusal");
 
   if (doneSummary && !isStreaming && !expanded) {
     const seconds = (doneSummary.totalLatencyMs / 1000).toFixed(2);
@@ -95,7 +98,7 @@ export function AgentExecutionStepper({
           const event =
             step.id === "grounded_generator" && refusalEvent
               ? refusalEvent
-              : latestByNode.get(step.id);
+              : latestByNode.get(normalizeNodeKey(step.id));
           const status = event?.status ?? "idle";
           const displayLabel =
             step.id === "grounded_generator" && refusalEvent

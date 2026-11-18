@@ -2,6 +2,7 @@
 
 import json
 import math
+import os
 import re
 import time
 from collections.abc import Callable
@@ -40,12 +41,17 @@ def _default_onnx_loader(
     from huggingface_hub import hf_hub_download
     from tokenizers import Tokenizer
 
-    tokenizer_path = hf_hub_download(repo_id=repo_id, filename="tokenizer.json")
+    cache_dir = os.getenv("HF_HOME") or None
+    tokenizer_path = hf_hub_download(
+        repo_id=repo_id, filename="tokenizer.json", cache_dir=cache_dir
+    )
     tokenizer = Tokenizer.from_file(tokenizer_path)
 
     label_map: dict[str, int] = {"entailment": 0, "neutral": 1, "contradiction": 2}
     try:
-        config_path = hf_hub_download(repo_id=repo_id, filename="config.json")
+        config_path = hf_hub_download(
+            repo_id=repo_id, filename="config.json", cache_dir=cache_dir
+        )
         config_data = json.loads(open(config_path, encoding="utf-8").read())
         raw_id2label = config_data.get("id2label", {})
         if isinstance(raw_id2label, dict) and raw_id2label:
@@ -58,7 +64,9 @@ def _default_onnx_loader(
     model_path: str | None = None
     for candidate in ("onnx/model_quantized.onnx", "onnx/model.onnx", "model.onnx"):
         try:
-            model_path = hf_hub_download(repo_id=repo_id, filename=candidate)
+            model_path = hf_hub_download(
+                repo_id=repo_id, filename=candidate, cache_dir=cache_dir
+            )
             break
         except Exception:
             continue

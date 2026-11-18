@@ -131,6 +131,21 @@ curl -X POST http://localhost:8000/api/v1/collections/seed
 # Open FastAPI Swagger Docs:         http://localhost:8000/docs
 ```
 
+### Option B: Native Workstation Launch (`100% Zero-Docker`, Drive-Pinned Caching)
+
+If Docker Desktop is unavailable or you are running on a constrained OS partition:
+
+```powershell
+# 1. Pull local quantized Qwen3.8 model via Ollama (e.g. with OLLAMA_MODELS pinned to secondary drive)
+ollama pull hf.co/empero-ai/Qwen3.8-4B-Distill-GGUF:Q4_K_M
+
+# 2. Launch Ollama + FastAPI (embedded persistent Qdrant + SQLite) + Next.js in one command
+.\start-local-f-drive.ps1
+
+# 3. Seed Collection A & Collection B demos (or click "Seed Demo Collections" in the UI)
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/v1/collections/seed"
+```
+
 To enable **`CLOUD_API`** (DeepSeek Prefix Context Caching), set `DEEPSEEK_API_KEY` in `.env` and switch modes directly in the UI header bar.
 
 ---

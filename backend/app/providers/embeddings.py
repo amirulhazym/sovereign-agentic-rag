@@ -57,6 +57,33 @@ def _to_int_list(vec: Any) -> list[int]:
     return [int(x) for x in vec]
 
 
+def _ensure_bge_m3_registered() -> None:
+    """Register quantized Xenova/bge-m3 ONNX (~0.54 GB) when absent from FastEmbed 0.9+ registry."""
+    from fastembed import TextEmbedding
+    from fastembed.common.model_description import ModelSource, PoolingType
+
+    supported = {m["model"].lower() for m in TextEmbedding.list_supported_models()}
+    if "baai/bge-m3" not in supported:
+        TextEmbedding.add_custom_model(
+            model="BAAI/bge-m3",
+            pooling=PoolingType.CLS,
+            normalization=True,
+            sources=ModelSource(hf="Xenova/bge-m3"),
+            dim=1024,
+            model_file="onnx/model_quantized.onnx",
+            description="Multilingual BAAI/bge-m3 quantized ONNX (EN/BM/100+ languages)",
+            license="mit",
+            size_in_gb=0.54,
+        )
+
+
+def _resolve_reranker_model_name(model_name: str) -> str:
+    """Use quantized INT8 ONNX variant (0.57 GB) for 16GB RAM CPU speed."""
+    if model_name == "BAAI/bge-reranker-v2-m3":
+        return "BAAI/bge-reranker-v2-m3-int8"
+    return model_name
+
+
 class FastEmbedProvider:
     """Lazy ONNX dense + sparse embedding adapter running inference off the event loop."""
 
@@ -65,11 +92,13 @@ class FastEmbedProvider:
         *,
         dense_model_name: str = "BAAI/bge-m3",
         sparse_model_name: str = "Qdrant/bm25",
+        cache_dir: str | None = None,
         dense_loader: Callable[[], Any] | None = None,
         sparse_loader: Callable[[], Any] | None = None,
     ) -> None:
         self._dense_model_name = dense_model_name
         self._sparse_model_name = sparse_model_name
+        self._cache_dir = cache_dir
         self._dense_loader = dense_loader or self._default_dense_loader
         self._sparse_loader = sparse_loader or self._default_sparse_loader
         self._dense_model: Any | None = None
@@ -78,12 +107,16 @@ class FastEmbedProvider:
     def _default_dense_loader(self) -> Any:
         from fastembed import TextEmbedding
 
-        return TextEmbedding(model_name=self._dense_model_name)
+        if self._dense_model_name == "BAAI/bge-m3":
+            _ensure_bge_m3_registered()
+        return TextEmbedding(model_name=self._dense_model_name, cache_dir=self._cache_dir)
 
     def _default_sparse_loader(self) -> Any:
         from fastembed import SparseTextEmbedding
 
-        return SparseTextEmbedding(model_name=self._sparse_model_name)
+        return SparseTextEmbedding(
+            model_name=self._sparse_model_name, cache_dir=self._cache_dir
+        )
 
     def _embed_dense_sync(self, texts: list[str]) -> list[list[float]]:
         if self._dense_model is None:
@@ -119,16 +152,19 @@ class ONNXRerankerProvider:
         self,
         *,
         model_name: str = "BAAI/bge-reranker-v2-m3",
+        cache_dir: str | None = None,
         model_loader: Callable[[], Any] | None = None,
     ) -> None:
         self._model_name = model_name
+        self._cache_dir = cache_dir
         self._model_loader = model_loader or self._default_loader
         self._model: Any | None = None
 
     def _default_loader(self) -> Any:
         from fastembed.rerank.cross_encoder import TextCrossEncoder
 
-        return TextCrossEncoder(model_name=self._model_name)
+        resolved_name = _resolve_reranker_model_name(self._model_name)
+        return TextCrossEncoder(model_name=resolved_name, cache_dir=self._cache_dir)
 
     def _rerank_sync(self, query: str, docs: list[str]) -> list[float]:
         if self._model is None:

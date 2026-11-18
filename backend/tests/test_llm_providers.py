@@ -122,11 +122,16 @@ async def test_local_onprem_adapter_control_node_and_streaming() -> None:
         assert decision.route == "single_collection"
         assert decision.language == "ms"
         assert captured_payloads[0]["temperature"] == 0.0
+        assert captured_payloads[0]["response_format"] == {"type": "json_object"}
         assert "/no_think" in captured_payloads[0]["messages"][-1]["content"]
 
         stream_chunks: list[StreamChunk] = []
         async for chunk in adapter.stream_answer(
-            [ChatMessage(role="user", content="Apa prosedur OT?")]
+            [
+                ChatMessage(role="system", content="Static instructions"),
+                ChatMessage(role="system", content="Active Collection descriptor"),
+                ChatMessage(role="user", content="Apa prosedur OT?"),
+            ]
         ):
             stream_chunks.append(chunk)
 
@@ -134,6 +139,11 @@ async def test_local_onprem_adapter_control_node_and_streaming() -> None:
         assert text == "Menurut [hr_my:p12]."
         assert captured_payloads[1]["temperature"] == 0.6
         assert captured_payloads[1]["top_p"] == 0.95
+        # Qwen3.8 Jinja template rejects system messages after index 0
+        sent_roles = [m["role"] for m in captured_payloads[1]["messages"]]
+        assert sent_roles == ["system", "user"]
+        assert "Static instructions" in captured_payloads[1]["messages"][0]["content"]
+        assert "Active Collection descriptor" in captured_payloads[1]["messages"][0]["content"]
 
 
 async def test_cloud_deepseek_adapter_extracts_prefix_cache_hits() -> None:
