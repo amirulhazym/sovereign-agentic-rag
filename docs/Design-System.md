@@ -106,3 +106,15 @@ Driven directly by SSE `event: node_status`:
 - **Graceful Refusal Card:** When `citations` is empty and refusal is triggered, display a subtle amber info callout below the answer: *"No matching evidence found after 2 retrieval attempts — answer intentionally withheld to prevent hallucination."*
 - **SSE Stream Error Banner:** On `event: error`, render an inline Rose alert showing `code` and `message` (e.g., `OLLAMA_UNAVAILABLE`) plus a **Retry** button without wiping the user's prompt.
 - **Keyboard Accessibility:** `Enter` submits query (`Shift+Enter` for newline), `Escape` closes the Right Evidence Inspector, and all interactive controls maintain visible focus rings (`focus-visible:ring-2`).
+
+---
+
+## 5. Known UX Limitations & `v3.1` Dual-Surface Architecture Roadmap
+
+- **Current Limitations (`v3.0`):**
+  1. **Plain-Text Answer Rendering:** `ChatWorkspace.tsx` renders tokens with `whitespace-pre-wrap` without a Markdown/GFM parser, so `**bold**` syntax and SOP comparison tables appear unformatted.
+  2. **Hidden Session History & Shallow Developer Logs:** Past threads live inside a compact `<select>` dropdown (`180px`) without rename/delete/search, while `AgentExecutionStepper.tsx` overwrites earlier `Attempt 0` node events during retries and lacks detailed rewritten-query, reranker-score, and raw SSE telemetry logs.
+  3. **Persona Collision:** Exposing developer telemetry (`latency: 310557ms`, LangGraph node badges, `Seed Demo Collections`) directly inside the primary end-user chat pane crowds non-technical users while lacking full debugging depth for engineers.
+- **`v3.1` Modular RBAC Direction (`/chat` + `/studio`):** Keep a single Next.js App Router codebase sharing typed SSE/API contracts, separated by role-based access control enforced in FastAPI:
+  - **`/chat` (End-User Workspace):** Clean session history sidebar, rendered Markdown tables/lists, plain-language progress indicators, collapsible-on-demand source viewer, copy/regenerate/👍👎 feedback actions.
+  - **`/studio` (Developer & Admin Console):** Multi-attempt trace waterfall & token/SSE log inspector, KB & Chunk viewer (`DELETE` document/collection + filter controls), `eval/` benchmark viewer, and runtime configuration panel.

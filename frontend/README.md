@@ -34,3 +34,10 @@ Set `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`) when pointing th
 - **[`src/components/CollectionSidebar.tsx`](src/components/CollectionSidebar.tsx) & [`src/components/DocumentUploader.tsx`](src/components/DocumentUploader.tsx):** Multi-tenant workspace switcher, `+ New Collection` form, `Seed Demo Collections` trigger, drag-and-drop `.pdf`/`.md`/`.txt` upload, SHA-256 deduplication notice, and `1500ms` ingestion status polling (`PENDING -> INDEXING -> READY | FAILED`).
 - **[`src/components/AgentExecutionStepper.tsx`](src/components/AgentExecutionStepper.tsx):** Live Glass-Box stepper rendering the 6 LangGraph nodes, latency badges, `Attempt N/2` retry loops, `GracefulRefusal`, and collapsible summary pill.
 - **[`src/components/ChatWorkspace.tsx`](src/components/ChatWorkspace.tsx) & [`src/components/EvidenceInspectorDrawer.tsx`](src/components/EvidenceInspectorDrawer.tsx):** Collection-tailored starter prompts, inline clickable `[doc_id:pX]` pills, Stop button (`AbortController`), Graceful Refusal callout, SSE error alert with Retry, and collapsible Evidence Inspector drawer (`Escape` closes).
+
+---
+
+## 3. Known UX Gaps & `v3.1` Roadmap
+
+- Current `v3.0` displays raw Markdown characters (`whitespace-pre-wrap`), uses a minimal `<select>` dropdown for recent threads, overwrites prior retry attempts in `AgentExecutionStepper`, and mixes developer telemetry into the primary chat pane.
+- Planned `v3.1` separates `/chat` (clean End-User UI with Markdown rendering, full session sidebar, metadata filters, 👍/👎 feedback) from `/studio` (RBAC Developer Trace/Log Inspector, KB Chunk Manager, and `eval/` Hub) backed by structured `execution_traces` and auth/CRUD APIs.

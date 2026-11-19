@@ -44,8 +44,8 @@ The uniform output contract returned by every `BaseJudgeEvaluator` implementatio
 ### `LLMJudge` (`LLM-as-a-Judge`)
 A generative evaluator implementation (`LLMJudgeEvaluator`) using DeepSeek or `Qwen3.8` with structured JSON output to grade `EvalSample` outputs across Faithfulness, Answer Relevancy, and Context Recall.
 
-### `JEVJudge` (`JEV-as-a-Judge`)
-A non-generative discriminative decision/verifier evaluator (`JEVJudgeEvaluator`) using a local multilingual Cross-Encoder / Natural Language Inference (NLI) model to classify groundedness and relevance deterministically (`0.0` stochastic variance, `$0.00` API cost, sub-100ms latency).
+### `JEVJudge` (`JEV-as-a-Judge` vs. Current Local NLI Proxy)
+In current `v3.0` (`eval/eval_harness/judges/jev_judge.py`), `JEVJudgeEvaluator` is implemented as an air-gapped, non-generative local multilingual Cross-Encoder / Natural Language Inference (NLI) verifier (`Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` ONNX, `$0.00` cost, `0.0` stochastic variance, `293 ms` median CPU latency). **Architectural Clarification:** In 2026 literature (*JEV-as-a-Judge: Accept When Confident, Escalate When Unsure*, [`arXiv:2609.26550`](https://arxiv.org/abs/2609.26550), TypeSafe AI), true **Jev** is a non-autoregressive "System One" decision model (`ModernBERT-large` + RLCD) exposing typed `Noul`/`Choice`/`Score`/`Box` primitives with calibrated confidence escalation—slated for `eval/` `v3.1` integration alongside the air-gapped local NLI proxy.
 
 ### `InterJudgeAgreement`
 The statistical alignment between `LLMJudge` and `JEVJudge` binary `PASS`/`FAIL` decisions across the golden dataset, reported as raw percentage agreement and Cohen's Kappa ($\kappa$).

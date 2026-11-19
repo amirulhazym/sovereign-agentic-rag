@@ -17,7 +17,7 @@
 - **Sub-10ms Qdrant Hybrid Search + Structure-Aware Ingestion:** Native Dense + Sparse BM25 vectors fused server-side via **Reciprocal Rank Fusion (RRF)**, fed by **`PyMuPDF4LLM`** and two-tier **`ParentChunk` / `ChildChunk` + `Breadcrumb`** chunking via non-blocking FastAPI `BackgroundTasks`.
 - **Bounded LangGraph State Machine (`max_retries=2`):** 6 observable nodes (`QueryRouter` $\rightarrow$ `QueryRewriter` $\rightarrow$ `HybridRetriever` $\rightarrow$ `CrossEncoderReranker` $\rightarrow$ `RelevanceGrader` $\rightarrow$ `GroundedGenerator`) with `CitationValidator` (`[doc_id:pX]`) and deterministic bilingual `GracefulRefusal` (no external web search leakage).
 - **Glass-Box Next.js Workspace & Typed SSE:** `POST /api/v1/chat/stream` emits 5 discriminated SSE events (`node_status`, `token`, `citations`, `done`, `error`) powering a live **Agent Execution Stepper** and clickable evidence drawers.
-- **Standalone Evaluation Sub-Project (`eval/`):** Decoupled HTTP evaluation harness comparing generative **`LLMJudgeEvaluator`** vs. deterministic **`JEVJudgeEvaluator`** (`$0`, sub-100ms, `0.0` variance) across Latency, Token Cost, Score Variance, and Cohen's Kappa (`InterJudgeAgreement`).
+- **Standalone Evaluation Sub-Project (`eval/`):** Decoupled HTTP evaluation harness comparing generative **`LLMJudgeEvaluator`** vs. deterministic local **`JEVJudgeEvaluator`** (currently implemented with an air-gapped ONNX Multilingual NLI Cross-Encoder `mDeBERTa-v3` at `$0`, sub-300ms median latency, and `0.000` variance — with TypeSafe **JEV System-1 (`arXiv:2609.26550`)** confidence-cascading targeted for `v3.1`) across Latency, Token Cost, Score Variance, and Cohen's Kappa (`InterJudgeAgreement`).
 
 ---
 
@@ -25,15 +25,15 @@
 
 This repository evolves the 2025 prototype [`amirulhazym/malay-qa-bot-rag`](https://github.com/amirulhazym/malay-qa-bot-rag) (`v1_malay_selfhosted` and `v2_multilingual_api`) into a production-ready enterprise architecture:
 
-| Engineering Dimension | `v1_malay_selfhosted` (2025) | `v2_multilingual_api` (2025) | `sovereign-agentic-rag` (`v3` Target) |
+| Engineering Dimension | `v1_malay_selfhosted` (2025) | `v2_multilingual_api` (2025) | `sovereign-agentic-rag` (`v3` Implemented) |
 | :--- | :--- | :--- | :--- |
 | **Control Flow** | Linear `RetrievalQA` chain | Linear 1-shot `encode -> retrieve -> rerank -> generate` | **Bounded LangGraph State Machine** (`max_retries=2`) with self-reflective grading, query rewriting & `GracefulRefusal` |
 | **Retrieval & Chunking** | Local FAISS + `MiniLM-L12-v2` + 300-char recursive split | Cloud Pinecone (pure dense cosine) + 1,000-char split (`Context Precision` plateaued at `0.336`) | **Qdrant Hybrid Search (Dense + Sparse BM25 via RRF)** + **`PyMuPDF4LLM` `ParentChunk`/`ChildChunk` + `Breadcrumb`** + `collection_id` isolation |
 | **Backend & Transport** | Monolithic Streamlit script | Single-file FastAPI `main.py` (import-time model load, blocking `POST`, duplicated `v2_adapter.py`) | **Layered FastAPI** (`routers -> services -> agents -> repositories/providers`), `lifespan` + `Depends()`, async `BackgroundTasks`, **typed SSE** |
 | **Frontend UI** | Streamlit | Streamlit polling `requests.post(..., timeout=30)` | **Next.js (App Router, TypeScript, Tailwind)** with live **Agent Execution Stepper**, mode switch, & clickable `[doc_id:pX]` citation cards |
 | **Sovereignty & Cost** | Broken local `flan-t5-small` (`0.037` relevancy) | Cloud lock-in (Pinecone + Gemini) | **`$0` Infra Dual-Mode Adapter:** `LOCAL_ONPREM` (`empero-ai/Qwen3.8-4B/9B-Distill-GGUF` + FastEmbed ONNX) $\leftrightarrow$ `CLOUD_API` (DeepSeek Prefix Caching) |
-| **Containerization** | Hugging Face Spaces SDK | Single container launching 2 processes via `sleep 20` | **Multi-stage Docker Compose** (`frontend`, `backend`, `qdrant`, `ollama` profile) with `service_healthy` probes & named volumes |
-| **Evaluation** | Manual / Qualitative | Jupyter Notebook (`03-Evaluation-Framework.ipynb`) with RAGAs (`IndexError` / `NaN` failures) | **Standalone `eval/` CLI Harness** comparing **`LLM-as-a-Judge`** vs. **`JEV-as-a-Judge`** (Latency, Cost, Variance, Cohen's Kappa) |
+| **Containerization** | Hugging Face Spaces SDK | Single container launching 2 processes via `sleep 20` | **Multi-stage Docker Compose** (`frontend`, `backend`, `qdrant`, `ollama` profile) with `service_healthy` probes & named volumes (plus `F:` Zero-Docker launcher) |
+| **Evaluation** | Manual / Qualitative | Jupyter Notebook (`03-Evaluation-Framework.ipynb`) with RAGAs (`IndexError` / `NaN` failures) | **Standalone `eval/` CLI Harness** comparing **`LLM-as-a-Judge`** vs. deterministic **`JEVJudge` (Local ONNX NLI proxy; TypeSafe JEV cascade on v3.1 roadmap)** (Latency, Cost, Variance, Cohen's Kappa) |
 
 ---
 
@@ -164,17 +164,29 @@ To enable **`CLOUD_API`** (DeepSeek Prefix Context Caching), set `DEEPSEEK_API_K
 
 ---
 
+## Observed Runtime Characteristics & `v3.1` Optimization Roadmap
+
+Live end-to-end profiling on a CPU-only 16GB RAM Windows workstation (`Ollama Qwen3.8-4B-Distill-GGUF:Q4_K_M` at ~5.6 tok/s + FastEmbed `Xenova/bge-m3` / `bge-reranker-v2-m3-int8`) surfaced clear, concrete engineering findings for `v3.1`:
+
+- **Why CPU `LOCAL_ONPREM` Latency Reached `150–310s`:** Qdrant Hybrid RRF + ONNX Cross-Encoder retrieval completes in ~3–6s, whereas `LocalOnPremLLMAdapter` currently calls `/v1/chat/completions` with `/no_think` text across 4 serial LLM nodes (`QueryRouter`, `QueryRewriter`, `RelevanceGrader`, `GroundedGenerator`). Unlike Ollama's native `/api/chat` with `"think": false` (proven in `eval/` to cut single-call latency `14x` from `181s` to `12.9s`), `/v1/chat/completions` allows hidden `<think>` generation on CPU, compounded by prefilling the `>=1,024`-token static DeepSeek prefix prompt on single-slot Ollama. Switching to **`CLOUD_API` (`deepseek-chat`)** bypasses local CPU bottlenecks (~`2.5–6s` expected with Prefix Context Caching).
+- **`v3.1` Planned Priorities:**
+  1. **Sub-35s CPU Local Path:** Move `LocalOnPremLLMAdapter` to native `/api/chat` (`"think": false` + `num_predict` budget), add a compact local prompt profile, skip `QueryRewriter` on attempt `0` (`retry_count > 0` only), confidence-gate `RelevanceGrader` via reranker scores, and add short numeric `[1]` citation aliases + retrieved-source fallback (fixing `0 citations` when 4B models paraphrase section names or leak `[hr_policy_my:p12]` from few-shot examples).
+  2. **True TypeSafe JEV (`arXiv:2609.26550`) Cascade:** Rename the air-gapped ONNX NLI scorer (`mDeBERTa-v3`) clearly as `LocalNLIVerifier`, add `TypeSafeJEVEvaluator` (`Noul`/`Choice`/`Score` Decisions API), and implement confidence-gated escalation (`Accept When Confident, Escalate When Unsure`) alongside Langfuse/LangSmith tracing.
+  3. **Dual-Surface RBAC UX (`/chat` + `/studio`):** Split non-technical `/chat` (Markdown rendering, persistent session history sidebar, 👍/👎 feedback) from `/studio` developer observability (full multi-attempt trace waterfall, reranker scores, KB chunk inspector, `DELETE` endpoints, eval hub).
+
+---
+
 ## Verified Local Suites
 
 ```bash
-# Backend unit, ingestion, LangGraph & SSE contract tests
+# Backend unit, ingestion, LangGraph & SSE contract tests (41 tests)
 cd backend && .venv/Scripts/pytest.exe tests -v && .venv/Scripts/ruff.exe check app tests
 
-# Standalone eval harness tests, lint & side-by-side benchmark CLI
+# Standalone eval harness tests, lint & side-by-side benchmark CLI (15 tests)
 cd eval && .venv/Scripts/pytest.exe tests -v && .venv/Scripts/ruff.exe check eval_harness tests
 .venv/Scripts/python.exe -m eval_harness.runner --dataset datasets/golden_dataset.jsonl --runs 3
 
-# Next.js workspace tests, strict TypeScript & ESLint (run `npm run build` on Linux/Docker/NTFS)
+# Next.js workspace tests, strict TypeScript & ESLint (9 tests; run `npm run build` on Linux/Docker/NTFS)
 cd frontend && npm test && npm run typecheck && npm run lint
 ```
 

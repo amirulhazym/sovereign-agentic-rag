@@ -226,8 +226,8 @@ Each core `Seam` hides complex implementation behind a small `Interface` and is 
 
 ### 4.2 Qdrant Hybrid Collection Schema (`sovereign_rag_chunks`)
 
-- **Named Dense Vector (`"dense"`):** Size matched to `BAAI/bge-m3` (`1024`-dim, Cosine distance) or configured FastEmbed dense model.
-- **Named Sparse Vector (`"sparse"`):** `SparseVectorParams(modifier=Modifier.IDF)` populated by `Qdrant/bm25` or `bge-m3` lexical weights.
+- **Deployment Modes (`backend/app/main.py`):** Connects either to a standalone Qdrant server (`QDRANT_URL=http://qdrant:6333` in Docker Compose) or runs embedded persistent disk storage (`QDRANT_LOCAL_PATH` via `AsyncQdrantClient(path=...)` with `is_local_path=True`) for zero-Docker setups.
+- **Dense & Sparse Embeddings (`backend/app/providers/embeddings.py`):** Configured as `BAAI/bge-m3` (`1024`-dim Cosine) and `Qdrant/bm25` (`Modifier.IDF`). At runtime on `FastEmbed 0.9+`, `_ensure_bge_m3_registered()` registers quantized **`Xenova/bge-m3`** (`onnx/model_quantized.onnx`, `0.54 GB`) under `"BAAI/bge-m3"`, and `_resolve_reranker_model_name()` selects **`BAAI/bge-reranker-v2-m3-int8`** (`0.57 GB`) to preserve 16GB RAM headroom.
 - **Indexed Payload Fields (for sub-10ms pre-filtering):**
   - `collection_id` (`keyword` — mandatory tenant filter on every query)
   - `doc_id` (`keyword`)
@@ -395,3 +395,13 @@ Mengapa gabungan **Dense + Sparse BM25** jauh lebih baik daripada carian vector 
 - Di dalam Docker Compose, setiap servis (`frontend`, `backend`, `qdrant`, `ollama`) mendapat nama DNS dalaman mengikut nama servisnya.
 - Sebab itulah `backend` menghubungi Qdrant di `http://qdrant:6333` (bukan `localhost:6333`, kerana `localhost` di dalam kontena merujuk kepada kontena backend itu sendiri!).
 - Kualiti permulaan dikawal oleh `depends_on: qdrant: condition: service_healthy` supaya backend tidak *crash* sebelum Qdrant siap dibuka — menggantikan teknik `sleep 20` yang rapuh dalam `v2` (`setup.sh`).
+
+---
+
+## 9. Observed Runtime Bottlenecks & `v3.1` Optimization Roadmap
+
+Live profiling on CPU-only `LOCAL_ONPREM` (`Ollama 0.40.16`, `Qwen3.8-4B-Distill-GGUF:Q4_K_M` at `~5.6 tok/s`, `15.4 GiB` RAM) identified concrete software bottlenecks distinct from vector retrieval (`~3–6s`):
+
+1. **Unsuppressed `<think>` Generation on `/v1/chat/completions`:** `LocalOnPremLLMAdapter` currently uses Ollama's OpenAI-compatible `/chat/completions` endpoint with an appended `/no_think` hint and zero `think` control on `stream_answer()`. In practice, Qwen3.8 continues generating `150–450` hidden thinking tokens per node (`150–310s` end-to-end). Switching to Ollama's native `/api/chat` with `"think": false` (verified in `eval/eval_harness/judges/llm_judge.py` to cut single-call runtime `14x` from `181s` to `12.9s`) plus `num_predict` caps on control nodes is the primary `v3.1` latency fix.
+2. **4 Serial LLM Calls + Local KV-Cache Thrashing:** Executing `QueryRouter`, `QueryRewriter` (even on `attempt=0`), `RelevanceGrader` (even when `CrossEncoderReranker` scores strongly), and `GroundedGenerator` with alternating system prompts evicts single-slot Ollama KV cache and forces CPU prefill of the `>=1,024`-token static DeepSeek prefix prompt on every turn. `v3.1` introduces separate local (`~250`-token) vs. cloud DeepSeek (`>=1,024`-token) prompt profiles, heuristic/conditional `QueryRouter` & `attempt > 0`-only rewriting, and reranker-score confidence gating before invoking `RelevanceGrader` or a TypeSafe System-1 classifier.
+3. **4B Citation Format Drift & Few-Shot Collision:** Example 2 in `backend/app/providers/prompts.py` shares the OT policy phrasing with a fictional `[hr_policy_my:p12]` ID (vs. seeded `hr_employment_and_overtime_policy_my:p2`), and quantized 4B outputs occasionally cite sections in prose without `[doc_id:pX]` brackets, causing `validate_and_normalize_citations()` to emit `citations: []` with no fallback source cards. Also, `local_client` timeout (`120.0s` in `main.py`) should be raised to `300.0s` for CPU fallback safety.

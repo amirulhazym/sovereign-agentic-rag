@@ -122,13 +122,15 @@ class BaseJudgeEvaluator(ABC):
   3. **Context Recall:** Fraction of statements in `sample.ground_truth_answer` / `ground_truth_contexts` present within `output.retrieved_contexts`.
 - **Telemetry:** Extracts exact `prompt_tokens`, `completion_tokens`, and `prompt_cache_hit_tokens` from API usage metadata to compute `estimated_cost_usd`.
 
-### 3.2 Judge 2: `JEVJudgeEvaluator` (`JEV-as-a-Judge`)
-- **Model Slot:** Local non-generative discriminative verifier via lazy-loaded `onnxruntime` + `tokenizers` (`ONNXMultilingualNLIBackend`, default `Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`, also supporting 1-logit ONNX Cross-Encoders such as `BAAI/bge-reranker-v2-m3`, plus a `LexicalDiscriminativeBackend` option for zero-download smoke runs). Supports English, Bahasa Melayu, and BM-EN code-switching natively without generative JSON fragility or PyTorch RAM overhead.
-- **Deterministic Metric Algorithm (Zero Token Generation):**
-  1. **Faithfulness (Sentence-Level Entailment):** Split `output.answer` (stripping `[doc_id:pX]` citation tags) into atomic sentences $S = [s_1, \dots, s_m]$. For each sentence $s_i$, compute NLI probability $P(\text{entailment} \mid \text{premise}=\text{contexts}, \text{hypothesis}=s_i)$ normalized over $\{\text{entailment}, \text{contradiction}\}$ (or max across individual context chunks). Average across all claims.
-  2. **Answer Relevancy (Discriminative Query-Answer Scoring):** Score $(sample.question, output.answer)$ through the multilingual relevance cross-encoder / NLI pair and normalize via logistic sigmoid into $[0.0, 1.0]$.
+### 3.2 Judge 2: `JEVJudgeEvaluator` (Local ONNX NLI Proxy vs. True TypeSafe JEV)
+- **Architectural Clarification (Air-Gapped Proxy vs. 2026 Literature):**
+  - **Current `v3.0` Implementation (`eval/eval_harness/judges/jev_judge.py`):** Runs a lazy-loaded, 100% air-gapped discriminative NLI verifier via `onnxruntime` + `tokenizers` (`ONNXMultilingualNLIBackend`, default `Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`, `max_length=512`, plus `LexicalDiscriminativeBackend` for offline smoke checks). It generates zero tokens (`$0.00` cost, `StdDev == 0.000`, `293 ms` median on CPU vs. `20,051 ms` for `LLMJudge(ollama)`).
+  - **Comparison to True TypeSafe **Jev** (*"JEV-as-a-Judge: Accept When Confident, Escalate When Unsure"*, [`arXiv:2609.26550`](https://arxiv.org/abs/2609.26550), OpenRouter Decisions API, Langfuse):** True Jev is a non-autoregressive **"System One"** decision model (`ModernBERT-large` + RLCD) that evaluates structured `state` against typed `Noul` / `Choice` / `Score` / `Box` questions in one parallel forward pass (`~152 ms`, calibrated probability distributions), enabling a **confidence-gated cascade** (accept confident verdicts cheaply; escalate only low-confidence edge cases to frontier LLM judges). Our local `mDeBERTa-v3` NLI backend intentionally serves as the air-gapped `$0` on-prem proxy under the same `BaseJudgeEvaluator` seam, while **`v3.1`** plans to split `LocalNLIVerifier` cleanly from a cloud/hybrid `TypeSafeJEVEvaluator` + `CascadingJudgeEvaluator`.
+- **Deterministic Local NLI Algorithm (Zero Token Generation):**
+  1. **Faithfulness (Sentence-Level Entailment):** Split `output.answer` (stripping `[doc_id:pX]` citation tags) into atomic sentences $S = [s_1, \dots, s_m]$. For each sentence $s_i$, compute NLI probability $P(\text{entailment} \mid \text{premise}=\text{contexts}, \text{hypothesis}=s_i)$ normalized over $\{\text{entailment}, \text{contradiction}\}$ (max across individual context chunks). Average across all claims.
+  2. **Answer Relevancy (Discriminative Query-Answer Scoring):** Score $(sample.question, output.answer)$ via `1 - P(contradiction)` (or sigmoid for 1-logit cross-encoders).
   3. **Context Recall (Reference Coverage):** Split `sample.ground_truth_answer` into reference clauses $R = [r_1, \dots, r_k]$; for each $r_j$, compute $\max_{c \in \text{retrieved\_contexts}} P(\text{entailment} \mid c, r_j)$ and average across $R$.
-- **Properties:** `$0.00` API cost, deterministic (`StdDev == 0.000` across repeated runs), and ~20–100ms latency per sample.
+- **Measured CPU Properties:** `$0.00` API cost, deterministic (`StdDev == 0.000` across repeated runs), and ~`293 ms` P50 post-load latency (`100%` agreement / `Kappa: 1.0000` on stratified 6×3 live smoke benchmark).
 
 ---
 
